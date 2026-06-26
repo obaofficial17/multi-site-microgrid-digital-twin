@@ -1,0 +1,12 @@
+# Node modules & system caches
+node_modules/
+.vercel/
+__pycache__/
+*.pyc
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Private credentials (Never push keys!)
+.env
