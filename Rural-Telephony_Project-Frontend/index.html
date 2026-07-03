@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A1 Power Site Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl space-y-6">
+            <div class="text-center">
+                <h2 class="text-2xl font-black text-emerald-400">A1 Power Site Monitor</h2>
+                <p class="text-xs text-slate-400 mt-1">Authorized Operator Portal Initialization</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Operator Email</label>
+                    <input id="login-email" type="email" required placeholder="operator@a1power.com" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg p-3 text-sm text-slate-100 outline-none transition-colors">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Access Password</label>
+                    <input id="login-password" type="password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg p-3 text-sm text-slate-100 outline-none transition-colors">
+                </div>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-sm rounded-lg p-3.5 transition-colors cursor-pointer shadow-lg">Verify Identity & Connect</button>
+                <div id="auth-error" class="text-xs text-rose-400 text-center hidden font-medium bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-content" class="invisible">
+        <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-40">
+            <div>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-xl font-extrabold tracking-tight">A1 Power <span class="text-emerald-400 font-light">Site Monitor</span></h1>
+                    <span id="heartbeat-badge" class="bg-slate-800 text-slate-400 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-slate-700 transition-all duration-300">
+                        <span id="heartbeat-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                        <span id="heartbeat-text">Initializing Link...</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">7-Site Cluster Microgrid Telemetry SCADA Core Architecture</p>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-slate-950 px-3 py-2 border border-slate-800 rounded-xl">
+    <label for="site-selector" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Node Path:</label>
+    <select id="site-selector" class="bg-slate-950 text-slate-100 text-xs font-semibold outline-none cursor-pointer border-none focus:ring-0">
+        <option value="Site 1 - Epe" class="bg-slate-900 text-slate-100 border-none">Site 1 - Epe</option>
+        <option value="Site 2 - Oyere" class="bg-slate-900 text-slate-100 border-none">Site 2 - Oyere</option>
+        <option value="Site 3 - Aiyetiabo" class="bg-slate-900 text-slate-100 border-none">Site 3 - Aiyetiabo</option>
+        <option value="Site 4 - Emuren" class="bg-slate-900 text-slate-100 border-none">Site 4 - Emuren</option>
+        <option value="Site 5 - Igirigi" class="bg-slate-900 text-slate-100 border-none">Site 5 - Igirigi</option>
+        <option value="Site 6 - Gbedu" class="bg-slate-900 text-slate-100 border-none">Site 6 - Gbedu</option>
+        <option value="Site 7 - Obbo Aiyegungle" class="bg-slate-900 text-slate-100 border-none">Site 7 - Obbo Aiyegungle</option>
+    </select>
+</div>
+                <button id="logout-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs px-3.5 py-2 rounded-xl transition-colors cursor-pointer">Sign Out</button>
+            </div>
+        </header>
+
+        <main class="p-6 max-w-7xl mx-auto space-y-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                
+                <div class="space-y-6 lg:col-span-1">
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2.5">Site Directory</h3>
+                        <div class="mt-4 space-y-3 text-xs">
+                            <div>
+                                <span class="text-slate-500 block">Field Supervisor:</span>
+                                <span id="security-supervisor" class="font-semibold text-slate-200">-</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">Emergency Responder Unit:</span>
+                                <span id="security-responder" class="font-semibold text-slate-200">-</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">Security Patrol Hotline:</span>
+                                <span id="security-hotline" class="font-bold text-amber-400 text-sm block mt-0.5">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="live-alarm-banner" class="hidden bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 text-rose-400 text-xs space-y-2 animate-pulse">
+                        <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                            <span>⚠️</span> Critical System Breaker Fault
+                        </div>
+                        <p id="live-alarm-desc">Operational thresholds broken on target asset node.</p>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Solar Generation</p>
+                        <div class="mt-4 flex items-baseline gap-1.5">
+                            <span id="total-solar-val" class="text-4xl font-black tracking-tight text-slate-100">0.0</span>
+                            <span class="text-xs font-bold text-slate-400">Watts</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2">Combined sum input of CC1 + CC2</p>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Infrastructure Load</p>
+                        <div class="mt-4 flex items-baseline gap-1.5">
+                            <span id="total-load-val" class="text-4xl font-black tracking-tight text-slate-100">0.0</span>
+                            <span class="text-xs font-bold text-slate-400">Watts</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2">Combined load pull lines consumption</p>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-violet-500"></div>
+                        <div class="flex justify-between items-start">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Battery Bus Potential</p>
+                            <span id="soc-badge" class="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full border border-violet-500/20 font-bold">0% SoC</span>
+                        </div>
+                        <div class="mt-4 flex items-baseline gap-1.5">
+                            <span id="bat-val" class="text-4xl font-black tracking-tight text-slate-100">0.00</span>
+                            <span class="text-xs font-bold text-slate-400">Volts</span>
+                        </div>
+                        <div class="mt-3 bg-slate-900 h-1 rounded-full overflow-hidden">
+                            <div id="soc-bar" class="bg-violet-500 h-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Solar Power Harvesting Profile (Watts)</h3>
+                    <div class="relative w-full flex-grow"><canvas id="solarPowerChart"></canvas></div>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">PV String Input Voltages (Volts)</h3>
+                    <div class="relative w-full flex-grow"><canvas id="solarVoltChart"></canvas></div>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Load Power Consumption Trends (Watts)</h3>
+                    <div class="relative w-full flex-grow"><canvas id="loadPowerChart"></canvas></div>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">DC Bus Line Stability Timeline (Volts)</h3>
+                    <div class="relative w-full flex-grow"><canvas id="batteryStabilityChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-3">Historical Fault Intercept Log Register</h3>
+                <div id="alarm-history-container" class="mt-4 max-h-[160px] overflow-y-auto space-y-2 font-mono text-[11px] text-slate-400 pr-2">
+                    <div class="text-slate-500 italic py-2">System log clear. Awaiting hardware baseline telemetry stream...</div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
