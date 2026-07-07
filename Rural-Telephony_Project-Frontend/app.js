@@ -1,10 +1,6 @@
-// ==============================================================================
-// A1 POWER MONITORING CORE SCADA ENGINE (FIRST PRINCIPLES)
-// ==============================================================================
-
-const SUPABASE_URL = "https://icgryayptwjgcpqhwsxx.supabase.co";
-// !!! ACTION REQUIRED !!! Replace this string with your long sb_publishable_... key!
-const SUPABASE_ANON_KEY = "sb_publishable_U8VMbs1XABYo62cOslpNkw_PfN6rPRl";
+// Initialize Supabase Client using the globally accessible config object
+const SUPABASE_URL = SUPABASE_CONFIG.URL;
+const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
