@@ -10,4 +10,6 @@ Thumbs.db
 
 # Private credentials (Never push keys!)
 .env
+
+Rural-Telephony_Project-Frontend/supabase_config
 Rural-Telephony_Project-Frontend/supabase_config.js
