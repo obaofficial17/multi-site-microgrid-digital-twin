@@ -2,10 +2,10 @@ import os
 import random
 import time
 import requests
-from dotenv import load_dotenv  # <-- Add this line
+from dotenv import load_dotenv 
 
 # Explicitly load the .env file from the backend directory
-load_dotenv()  # <-- Add this line
+load_dotenv() 
 
 # Pull secretly from environment variables
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
