@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Multi-Tenant Infrastructure Security Contact Directory Directory
+// Multi-Tenant Infrastructure Security Contact Directory
 const SITE_SECURITY_DIRECTORY = {
     "Site 1 - Epe": { responder: "Epe SG", hotline: "+234 803 111 0001", supervisor: "Engr. Lekan" },
     "Site 2 - Oyere": { responder: "Oyere SG", hotline: "+234 803 111 0002", supervisor: "Tosin" },
@@ -15,7 +15,7 @@ const SITE_SECURITY_DIRECTORY = {
     "Site 7 - Obbo Aiyegunle": { responder: "Obbo Aiyegunle SG", hotline: "+234 803 111 0007", supervisor: "HQ Admin Lead" }
 };
 
-// UI DOM Pointers References
+// UI DOM Pointers
 const authOverlay = document.getElementById('auth-overlay');
 const appContent = document.getElementById('app-content');
 const loginForm = document.getElementById('login-form');
@@ -40,26 +40,55 @@ const batVal = document.getElementById('bat-val');
 const socBadge = document.getElementById('soc-badge');
 const socBar = document.getElementById('soc-bar');
 
-// Chart Global Cache References
+// Chart & Audio Global References
 let chartGen = null, chartVolt = null, chartLoad = null, chartBat = null;
-let activeChannel = null, heartbeatTimer = null;
+let activeChannel = null, heartbeatTimer = null, audioCtx = null;
 const MAX_DATAPOINTS_VIEWPORT = 15;
 
 // ==============================================================================
-// 1. ENGINE GRAPHICS INITIALIZATION
+// 0. INDUSTRIAL ALARM AUDIO SYNTHESIZER (Web Audio API)
+// ==============================================================================
+function triggerAudibleSCADAAlert() {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 Tone
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {
+        console.warn("Audio Context waiting for initial user UI interaction.");
+    }
+}
+
+// ==============================================================================
+// 1. SCADA CHART ENGINE INITIALIZATION (Updated for Light Theme)
 // ==============================================================================
 function initSCADACharts() {
+    // Light Mode Grid & Text Settings
     const commonScales = {
-        x: { grid: { color: '#33415530' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
-        y: { grid: { color: '#33415530' }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+        x: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b', font: { size: 10 } } },
+        y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b', font: { size: 10 } } }
     };
-    const commonPlugin = { legend: { labels: { color: '#f1f5f9', font: { size: 10, weight: 'bold' } } } };
+    const commonPlugin = { legend: { labels: { color: '#334155', font: { size: 11, weight: 'bold' } } } };
 
     chartGen = new Chart(document.getElementById('solarPowerChart'), {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', backgroundColor: '#10b98110', borderWidth: 1.5, fill: true, tension: 0.1, pointRadius: 1 },
-            { label: 'CC2 Output (W)', data: [], borderColor: '#06b6d4', backgroundColor: '#06b6d410', borderWidth: 1.5, fill: true, tension: 0.1, pointRadius: 1 }
+            { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', backgroundColor: '#10b98120', borderWidth: 2, fill: true, tension: 0.2, pointRadius: 2 },
+            { label: 'CC2 Output (W)', data: [], borderColor: '#0ea5e9', backgroundColor: '#0ea5e920', borderWidth: 2, fill: true, tension: 0.2, pointRadius: 2 }
         ]},
         options: { responsive: true, maintainAspectRatio: false, scales: commonScales, plugins: commonPlugin }
     });
@@ -67,8 +96,8 @@ function initSCADACharts() {
     chartVolt = new Chart(document.getElementById('solarVoltChart'), {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'CC1 Input (V)', data: [], borderColor: '#f59e0b', borderWidth: 1.5, tension: 0.1, pointRadius: 1 },
-            { label: 'CC2 Input (V)', data: [], borderColor: '#3b82f6', borderWidth: 1.5, tension: 0.1, pointRadius: 1 }
+            { label: 'CC1 Input (V)', data: [], borderColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 2 },
+            { label: 'CC2 Input (V)', data: [], borderColor: '#3b82f6', borderWidth: 2, tension: 0.2, pointRadius: 2 }
         ]},
         options: { responsive: true, maintainAspectRatio: false, scales: commonScales, plugins: commonPlugin }
     });
@@ -76,8 +105,8 @@ function initSCADACharts() {
     chartLoad = new Chart(document.getElementById('loadPowerChart'), {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'CC1 Load Draw (W)', data: [], borderColor: '#ec4899', borderWidth: 1.5, tension: 0.1, pointRadius: 1 },
-            { label: 'CC2 Load Draw (W)', data: [], borderColor: '#a855f7', borderWidth: 1.5, tension: 0.1, pointRadius: 1 }
+            { label: 'CC1 Load Draw (W)', data: [], borderColor: '#6366f1', borderWidth: 2, tension: 0.2, pointRadius: 2 },
+            { label: 'CC2 Load Draw (W)', data: [], borderColor: '#8b5cf6', borderWidth: 2, tension: 0.2, pointRadius: 2 }
         ]},
         options: { responsive: true, maintainAspectRatio: false, scales: commonScales, plugins: commonPlugin }
     });
@@ -85,7 +114,7 @@ function initSCADACharts() {
     chartBat = new Chart(document.getElementById('batteryStabilityChart'), {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'DC Bus Potential (V)', data: [], borderColor: '#8b5cf6', backgroundColor: '#8b5cf608', borderWidth: 2, fill: true, tension: 0.1, pointRadius: 1 }
+            { label: 'DC Bus Potential (V)', data: [], borderColor: '#0d9488', backgroundColor: '#0d948815', borderWidth: 2.5, fill: true, tension: 0.2, pointRadius: 2 }
         ]},
         options: { responsive: true, maintainAspectRatio: false, scales: commonScales, plugins: commonPlugin }
     });
@@ -99,13 +128,10 @@ function appendMetricsToCharts(timeStr, r) {
 
     chartGen.data.datasets[0].data.push(r.cc1_pv_watts);
     chartGen.data.datasets[1].data.push(r.cc2_pv_watts);
-
     chartVolt.data.datasets[0].data.push(r.cc1_pv_volts);
     chartVolt.data.datasets[1].data.push(r.cc2_pv_volts);
-
     chartLoad.data.datasets[0].data.push(r.cc1_load_watts);
     chartLoad.data.datasets[1].data.push(r.cc2_load_watts);
-
     chartBat.data.datasets[0].data.push(r.battery_voltage);
 
     [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
@@ -115,19 +141,18 @@ function appendMetricsToCharts(timeStr, r) {
 }
 
 // ==============================================================================
-// 2. HARDWARE HEARTBEAT & THRESHOLD ALARM INTERCEPT TRIGGERS
+// 2. HARDWARE HEARTBEAT & 48V THRESHOLD ALARM INTERCEPT
 // ==============================================================================
 function kickHeartbeatCountdownTimer() {
     clearTimeout(heartbeatTimer);
     
-    // Pulse Header Badge Green
-    heartbeatBadge.className = "bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-emerald-500/30";
+    // Updated Light Theme Heartbeat Badges
+    heartbeatBadge.className = "bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-emerald-200 shadow-sm";
     heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping";
     heartbeatText.innerText = "DTU Link Active";
 
-    // If hardware misses transmission window for more than 40s, flag Dormancy
     heartbeatTimer = setTimeout(() => {
-        heartbeatBadge.className = "bg-rose-500/10 text-rose-400 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-rose-500/30 animate-pulse";
+        heartbeatBadge.className = "bg-rose-50 text-rose-600 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-rose-200 shadow-sm animate-pulse";
         heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
         heartbeatText.innerText = "Connection Dormant";
     }, 40000);
@@ -135,48 +160,62 @@ function kickHeartbeatCountdownTimer() {
 
 function evaluateThresholdAlarms(r) {
     let internalFaultLogs = [];
-    
-    // Industrial Parameter Checks
-    if (r.battery_voltage < 24.2) {
-        internalFaultLogs.push(`CRITICAL: Low Storage Potential Alarm (${r.battery_voltage}V) - Deep Discharge Hazard.`);
+    const batVolt = parseFloat(r.battery_voltage);
+
+    if (batVolt < 44.0) {
+        internalFaultLogs.push({ type: 'CRITICAL UNDERVOLTAGE', msg: `CRITICAL: Battery Voltage Deep Discharge (${batVolt}V) - Immediate Low Voltage Disconnect (LVD) Hazard.` });
+    } else if (batVolt < 46.8) {
+        internalFaultLogs.push({ type: 'UNDERVOLTAGE WARNING', msg: `WARNING: Battery Voltage Low (${batVolt}V) - DC Bus Approaching Discharge Threshold.` });
     }
+
+    if (batVolt > 58.4) {
+        internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `CRITICAL: Battery Overvoltage Spike (${batVolt}V) - Potential Charge Controller Regulation Failure / BMS Trip.` });
+    } else if (batVolt > 56.8) {
+        internalFaultLogs.push({ type: 'OVERVOLTAGE WARNING', msg: `WARNING: High Charge Potential (${batVolt}V) - Charge Controller Absorption Cutoff Approaching.` });
+    }
+
     if (r.cc1_pv_volts > 110.0 || r.cc2_pv_volts > 110.0) {
-        internalFaultLogs.push(`OVERVOLTAGE: PV String Input Spike Detected (CC1: ${r.cc1_pv_volts}V, CC2: ${r.cc2_pv_volts}V).`);
+        internalFaultLogs.push({ type: 'PV OVERVOLTAGE', msg: `OVERVOLTAGE: Solar String Voltage Spike Detected (CC1: ${r.cc1_pv_volts}V, CC2: ${r.cc2_pv_volts}V).` });
     }
-    if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0) && (new Date().getHours() >= 8 && new Date().getHours() <= 17)) {
-        internalFaultLogs.push(`UNDER-GENERATION: Zero or sub-optimal daylight harvesting detected during active hours.`);
+
+    const currentHour = new Date().getHours();
+    if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0) && (currentHour >= 8 && currentHour <= 17)) {
+        internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `UNDER-GENERATION: Sub-optimal daylight harvesting detected during peak generation window.` });
     }
 
     if (internalFaultLogs.length > 0) {
-        // 1. Pop open the live alert box banner overlay on screen
-        liveAlarmDesc.innerText = internalFaultLogs[0];
+        liveAlarmDesc.innerText = `${internalFaultLogs[0].type}: ${internalFaultLogs[0].msg}`;
         liveAlarmBanner.classList.remove('hidden');
         
-        // 2. Append directly to the rolling SCADA historical table log
-        internalFaultLogs.forEach(msg => {
+        // Updated Light Theme Screen Flash
+        document.body.classList.add('ring-4', 'ring-rose-500', 'ring-inset');
+        triggerAudibleSCADAAlert();
+
+        internalFaultLogs.forEach(alert => {
             const timeLog = new Date().toLocaleTimeString();
             if (alarmHistoryContainer.innerText.includes("Awaiting hardware baseline")) {
                 alarmHistoryContainer.innerHTML = "";
             }
             
-            // Render detailed log block
+            // Updated Light Theme Log Entry Structure
             alarmHistoryContainer.innerHTML = `
-                <div class="bg-rose-950/30 border border-rose-500/20 rounded p-2.5 py-1.5 text-rose-400 space-y-1">
-                    <div class="flex justify-between font-bold">
-                        <span>[${timeLog}] ⚠️ ${r.site_id}</span>
-                        <span class="text-[10px] bg-rose-500/20 px-1.5 py-0.2 rounded border border-rose-500/30 font-sans uppercase">Email Dispatched</span>
+                <div class="bg-white border-l-2 border-l-rose-500 border border-slate-200 rounded p-3 text-slate-700 shadow-sm space-y-1.5 animate-pulse">
+                    <div class="flex justify-between font-bold items-center border-b border-slate-100 pb-1">
+                        <span class="text-xs text-slate-800">${timeLog} ⚠️ ${r.site_id}</span>
+                        <span class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-mono uppercase">${alert.type}</span>
                     </div>
-                    <p class="text-slate-300 text-[10px] font-sans">${msg}</p>
+                    <p class="text-slate-600 text-[11px] font-sans font-medium">${alert.msg}</p>
                 </div>
             ` + alarmHistoryContainer.innerHTML;
         });
     } else {
         liveAlarmBanner.classList.add('hidden');
+        document.body.classList.remove('ring-4', 'ring-rose-500', 'ring-inset');
     }
 }
 
 // ==============================================================================
-// 3. STORAGE SYNC & DROPDOWN COORDINATOR
+// 3. UI DASHBOARD REFRESH & REALTIME SYNC
 // ==============================================================================
 function renderScreenCards(r) {
     if(!r) return;
@@ -188,11 +227,12 @@ function renderScreenCards(r) {
 }
 
 async function syncNodeHistory(siteName) {
-    // Map Site Contacts Directory details
     const meta = SITE_SECURITY_DIRECTORY[siteName];
-    securitySupervisor.innerText = meta.supervisor;
-    securityResponder.innerText = meta.responder;
-    securityHotline.innerText = meta.hotline;
+    if (meta) {
+        securitySupervisor.innerText = meta.supervisor;
+        securityResponder.innerText = meta.responder;
+        securityHotline.innerText = meta.hotline;
+    }
 
     let { data } = await supabaseClient
         .from('location_telemetry')
@@ -202,9 +242,8 @@ async function syncNodeHistory(siteName) {
         .limit(15);
 
     if (data && data.length > 0) {
-        // Clear viewport lines array configurations before loading history lines
         [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
-            c.data.labels = []; c.data.datasets.forEach(d => d.data = []);
+            if(c) { c.data.labels = []; c.data.datasets.forEach(d => d.data = []); }
         });
         
         data.reverse().forEach(row => {
@@ -238,7 +277,7 @@ siteSelector.addEventListener('change', (e) => {
 });
 
 // ==============================================================================
-// 4. OPERATOR SECURITY GATE KEEPER CONTROL AUTHENTICATION
+// 4. AUTHENTICATION & MOUNT GATEKEEPER
 // ==============================================================================
 function mountDashboard() {
     authOverlay.classList.add('opacity-0', 'pointer-events-none');
@@ -273,4 +312,3 @@ async function checkSession() {
     if (session) mountDashboard();
 }
 checkSession();
-
