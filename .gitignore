@@ -13,3 +13,5 @@ Thumbs.db
 
 Rural-Telephony_Project-Frontend/supabase_config
 Rural-Telephony_Project-Frontend/supabase_config.js
+.vercel
+.env*
