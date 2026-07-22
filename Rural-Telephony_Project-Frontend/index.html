@@ -10,161 +10,232 @@
     
     <!-- Load configuration parameters first -->
     <script src="supabase_config.js"></script>
-    <!-- Load the main application logic second -->
-    <script src="app.js"></script>
+      <script src="app.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:20px_20px]">
 
-    <div id="auth-overlay" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-50 transition-opacity duration-300">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl space-y-6">
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-white border-t-4 border-t-emerald-600 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl space-y-6">
             <div class="text-center">
-                <h2 class="text-2xl font-black text-emerald-400">A1 Power Site Monitor</h2>
-                <p class="text-xs text-slate-400 mt-1">Authorized Operator Portal Initialization</p>
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mb-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800">A1 Power Monitor</h2>
+                <p class="text-xs text-slate-500 mt-1 font-medium">Authorized Operator Portal Initialization</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Operator Email</label>
-                    <input id="login-email" type="email" required placeholder="operator@a1power.com" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg p-3 text-sm text-slate-100 outline-none transition-colors">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Operator Email</label>
+                    <input id="login-email" type="email" required placeholder="operator@a1power.com" class="w-full bg-slate-50 border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-lg p-3 text-sm text-slate-800 outline-none transition-all">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Access Password</label>
-                    <input id="login-password" type="password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg p-3 text-sm text-slate-100 outline-none transition-colors">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Access Password</label>
+                    <input id="login-password" type="password" required placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-lg p-3 text-sm text-slate-800 outline-none transition-all">
                 </div>
-                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-sm rounded-lg p-3.5 transition-colors cursor-pointer shadow-lg">Verify Identity & Connect</button>
-                <div id="auth-error" class="text-xs text-rose-400 text-center hidden font-medium bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20"></div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg p-3.5 transition-colors cursor-pointer shadow-md">Verify Identity & Connect</button>
+                <div id="auth-error" class="text-xs text-rose-600 text-center hidden font-semibold bg-rose-50 p-2.5 rounded-lg border border-rose-200"></div>
             </form>
         </div>
     </div>
 
+    <!-- Main App Content -->
     <div id="app-content" class="invisible">
-        <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-40">
+        
+        <!-- Header Nav -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-40 shadow-sm">
             <div>
                 <div class="flex items-center gap-3">
-                    <h1 class="text-xl font-extrabold tracking-tight">A1 Power <span class="text-emerald-400 font-light">Site Monitor</span></h1>
-                    <span id="heartbeat-badge" class="bg-slate-800 text-slate-400 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-slate-700 transition-all duration-300">
-                        <span id="heartbeat-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                    <div class="w-8 h-8 rounded bg-emerald-600 flex items-center justify-center text-white font-bold">A1</div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-slate-800">A1 Power <span class="text-emerald-600 font-medium">Site Monitor</span></h1>
+                    <span id="heartbeat-badge" class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-slate-200 transition-all duration-300 shadow-inner">
+                        <span id="heartbeat-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                         <span id="heartbeat-text">Initializing Link...</span>
                     </span>
                 </div>
-                <p class="text-xs text-slate-400 mt-0.5">7-Site Cluster Microgrid Telemetry SCADA Core Architecture</p>
+                <p class="text-xs text-slate-500 mt-1 font-medium">7-Site Cluster Microgrid Telemetry SCADA Core</p>
             </div>
             
-            <div class="flex items-center gap-2 bg-slate-950 px-3 py-2 border border-slate-800 rounded-xl">
-    <label for="site-selector" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Node Path:</label>
-    <select id="site-selector" class="bg-slate-950 text-slate-100 text-xs font-semibold outline-none cursor-pointer border-none focus:ring-0">
-        <option value="Site 1 - Epe" class="bg-slate-900 text-slate-100 border-none">Site 1 - Epe</option>
-        <option value="Site 2 - Oyere" class="bg-slate-900 text-slate-100 border-none">Site 2 - Oyere</option>
-        <option value="Site 3 - Aiyetiabo" class="bg-slate-900 text-slate-100 border-none">Site 3 - Aiyetiabo</option>
-        <option value="Site 4 - Emuren" class="bg-slate-900 text-slate-100 border-none">Site 4 - Emuren</option>
-        <option value="Site 5 - Igirigi" class="bg-slate-900 text-slate-100 border-none">Site 5 - Igirigi</option>
-        <option value="Site 6 - Gbedu" class="bg-slate-900 text-slate-100 border-none">Site 6 - Gbedu</option>
-        <option value="Site 7 - Obbo Aiyegungle" class="bg-slate-900 text-slate-100 border-none">Site 7 - Obbo Aiyegungle</option>
-    </select>
-</div>
-                <button id="logout-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs px-3.5 py-2 rounded-xl transition-colors cursor-pointer">Sign Out</button>
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Data History Window Selector -->
+                <div class="flex items-center gap-2 bg-slate-50 px-3 py-2 border border-slate-200 rounded-xl shadow-inner">
+                    <label for="history-limit" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Time Window:</label>
+                    <select id="history-limit" class="bg-slate-50 text-blue-700 text-xs font-bold outline-none cursor-pointer border-none focus:ring-0">
+                        <option value="15">Live Feed (15 Pts)</option>
+                        <option value="50">Last 50 Pts (Scrollable)</option>
+                        <option value="100">Last 100 Pts (Scrollable)</option>
+                        <option value="300">Last 300 Pts (Scrollable)</option>
+                    </select>
+                </div>
+
+                <!-- Site Selector -->
+                <div class="flex items-center gap-2 bg-slate-50 px-3 py-2 border border-slate-200 rounded-xl shadow-inner">
+                    <label for="site-selector" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Node Path:</label>
+                    <select id="site-selector" class="bg-slate-50 text-emerald-700 text-xs font-bold outline-none cursor-pointer border-none focus:ring-0">
+                        <option value="Site 1 - Epe">Site 1 - Epe</option>
+                        <option value="Site 2 - Oyere">Site 2 - Oyere</option>
+                        <option value="Site 3 - Aiyetiabo">Site 3 - Aiyetiabo</option>
+                        <option value="Site 4 - Emuren">Site 4 - Emuren</option>
+                        <option value="Site 5 - Igirigi">Site 5 - Igirigi</option>
+                        <option value="Site 6 - Gbedu">Site 6 - Gbedu</option>
+                        <option value="Site 7 - Obbo Aiyegunle">Site 7 - Obbo Aiyegunle</option>
+                    </select>
+                </div>
+                <button id="logout-btn" class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors cursor-pointer shadow-sm">Sign Out</button>
             </div>
         </header>
 
         <main class="p-6 max-w-7xl mx-auto space-y-6">
             
+            <!-- Top Dashboard Row -->
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 
+                <!-- Left Control Column -->
                 <div class="space-y-6 lg:col-span-1">
-                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2.5">Site Directory</h3>
+                    
+                    <!-- Security Directory -->
+                    <div class="bg-white border-t-4 border-t-slate-400 rounded-xl p-5 shadow-sm">
+                        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2.5">Site Directory</h3>
                         <div class="mt-4 space-y-3 text-xs">
                             <div>
-                                <span class="text-slate-500 block">Field Supervisor:</span>
-                                <span id="security-supervisor" class="font-semibold text-slate-200">-</span>
+                                <span class="text-slate-500 block font-medium">Field Supervisor:</span>
+                                <span id="security-supervisor" class="font-bold text-slate-800">-</span>
                             </div>
                             <div>
-                                <span class="text-slate-500 block">Emergency Responder Unit:</span>
-                                <span id="security-responder" class="font-semibold text-slate-200">-</span>
+                                <span class="text-slate-500 block font-medium">Emergency Responder:</span>
+                                <span id="security-responder" class="font-bold text-slate-800">-</span>
                             </div>
                             <div>
-                                <span class="text-slate-500 block">Security Patrol Hotline:</span>
-                                <span id="security-hotline" class="font-bold text-amber-400 text-sm block mt-0.5">-</span>
+                                <span class="text-slate-500 block font-medium">Security Patrol Hotline:</span>
+                                <span id="security-hotline" class="font-bold text-emerald-600 text-sm block mt-0.5">-</span>
                             </div>
                         </div>
                     </div>
 
-                    <div id="live-alarm-banner" class="hidden bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 text-rose-400 text-xs space-y-2 animate-pulse">
-                        <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider">
-                            <span>⚠️</span> Critical System Breaker Fault
+                    <!-- Live Weather Integration -->
+                    <div class="bg-white border-t-4 border-t-sky-400 rounded-xl p-5 shadow-sm">
+                        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2.5">Local Weather Conditions</h3>
+                        <div class="mt-4 flex justify-between items-end">
+                            <div>
+                                <span class="text-slate-500 block text-[10px] font-bold uppercase">Temperature</span>
+                                <span id="weather-temp" class="text-2xl font-black tracking-tight text-slate-800">--°C</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-slate-500 block text-[10px] font-bold uppercase">Cloud Cover</span>
+                                <span id="weather-clouds" class="text-sm font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded">--%</span>
+                            </div>
                         </div>
-                        <p id="live-alarm-desc">Operational thresholds broken on target asset node.</p>
+                    </div>
+
+                    <!-- Live Alarm Banner -->
+                    <div id="live-alarm-banner" class="hidden bg-rose-50 border-l-4 border-l-rose-600 rounded-r-xl p-4 shadow-sm animate-pulse">
+                        <div class="flex items-center gap-2 font-bold uppercase tracking-wider text-rose-700 text-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            System Fault Detected
+                        </div>
+                        <p id="live-alarm-desc" class="text-rose-600 text-xs mt-1 font-medium">Operational thresholds broken.</p>
                     </div>
                 </div>
 
+                <!-- KPI Cards -->
                 <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Solar Generation</p>
-                        <div class="mt-4 flex items-baseline gap-1.5">
-                            <span id="total-solar-val" class="text-4xl font-black tracking-tight text-slate-100">0.0</span>
-                            <span class="text-xs font-bold text-slate-400">Watts</span>
+                    
+                    <div class="bg-white border-t-4 border-t-emerald-500 rounded-xl p-5 shadow-sm relative">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            Total Solar Generation
+                        </p>
+                        <div class="mt-3 flex items-baseline gap-1.5">
+                            <span id="total-solar-val" class="text-4xl font-black tracking-tight text-slate-800">0.0</span>
+                            <span class="text-xs font-bold text-slate-500">Watts</span>
                         </div>
-                        <p class="text-[10px] text-slate-500 mt-2">Combined sum input of CC1 + CC2</p>
+                        <p class="text-[10px] text-slate-400 mt-2 font-medium">Combined sum input of CC1 + CC2</p>
                     </div>
 
-                    <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Infrastructure Load</p>
-                        <div class="mt-4 flex items-baseline gap-1.5">
-                            <span id="total-load-val" class="text-4xl font-black tracking-tight text-slate-100">0.0</span>
-                            <span class="text-xs font-bold text-slate-400">Watts</span>
+                    <div class="bg-white border-t-4 border-t-blue-500 rounded-xl p-5 shadow-sm relative">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            Total Infrastructure Load
+                        </p>
+                        <div class="mt-3 flex items-baseline gap-1.5">
+                            <span id="total-load-val" class="text-4xl font-black tracking-tight text-slate-800">0.0</span>
+                            <span class="text-xs font-bold text-slate-500">Watts</span>
                         </div>
-                        <p class="text-[10px] text-slate-500 mt-2">Combined load pull lines consumption</p>
+                        <p class="text-[10px] text-slate-400 mt-2 font-medium">Combined load pull lines consumption</p>
                     </div>
 
-                    <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-1 h-full bg-violet-500"></div>
+                    <div class="bg-white border-t-4 border-t-teal-600 rounded-xl p-5 shadow-sm relative">
                         <div class="flex justify-between items-start">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Battery Bus Potential</p>
-                            <span id="soc-badge" class="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full border border-violet-500/20 font-bold">0% SoC</span>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                48V Bus Potential
+                            </p>
+                            <span id="soc-badge" class="text-[10px] bg-teal-50 text-teal-700 px-2.5 py-0.5 rounded border border-teal-200 font-bold shadow-sm">0% SoC</span>
                         </div>
-                        <div class="mt-4 flex items-baseline gap-1.5">
-                            <span id="bat-val" class="text-4xl font-black tracking-tight text-slate-100">0.00</span>
-                            <span class="text-xs font-bold text-slate-400">Volts</span>
+                        <div class="mt-3 flex items-baseline gap-1.5">
+                            <span id="bat-val" class="text-4xl font-black tracking-tight text-slate-800">0.00</span>
+                            <span class="text-xs font-bold text-slate-500">Volts</span>
                         </div>
-                        <div class="mt-3 bg-slate-900 h-1 rounded-full overflow-hidden">
-                            <div id="soc-bar" class="bg-violet-500 h-full transition-all duration-500" style="width: 0%"></div>
+                        <div class="mt-3 bg-slate-100 h-1.5 rounded-full overflow-hidden shadow-inner">
+                            <div id="soc-bar" class="bg-teal-500 h-full transition-all duration-500" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Scrollable Chart Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Solar Power Harvesting Profile (Watts)</h3>
-                    <div class="relative w-full flex-grow"><canvas id="solarPowerChart"></canvas></div>
+                <!-- Notice the overflow-x-auto containers -->
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Solar Power Harvesting Profile (Watts)</h3>
+                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
+                        <div id="wrapper-gen" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="solarPowerChart"></canvas></div>
+                    </div>
                 </div>
 
-                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">PV String Input Voltages (Volts)</h3>
-                    <div class="relative w-full flex-grow"><canvas id="solarVoltChart"></canvas></div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">PV String Input Voltages (Volts)</h3>
+                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
+                        <div id="wrapper-volt" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="solarVoltChart"></canvas></div>
+                    </div>
                 </div>
 
-                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Load Power Consumption Trends (Watts)</h3>
-                    <div class="relative w-full flex-grow"><canvas id="loadPowerChart"></canvas></div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Load Power Consumption Trends (Watts)</h3>
+                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
+                        <div id="wrapper-load" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="loadPowerChart"></canvas></div>
+                    </div>
                 </div>
 
-                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl h-[300px] flex flex-col">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">DC Bus Line Stability Timeline (Volts)</h3>
-                    <div class="relative w-full flex-grow"><canvas id="batteryStabilityChart"></canvas></div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">48V DC Bus Line Stability (Volts)</h3>
+                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
+                        <div id="wrapper-bat" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="batteryStabilityChart"></canvas></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-3">Historical Fault Intercept Log Register</h3>
-                <div id="alarm-history-container" class="mt-4 max-h-[160px] overflow-y-auto space-y-2 font-mono text-[11px] text-slate-400 pr-2">
-                    <div class="text-slate-500 italic py-2">System log clear. Awaiting hardware baseline telemetry stream...</div>
+            <!-- Alarm Log -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-widest border-b border-slate-100 pb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Historical Fault Intercept Log Register
+                </h3>
+                <div id="alarm-history-container" class="mt-4 max-h-[160px] overflow-y-auto space-y-2 font-mono text-[11px] text-slate-600 pr-2">
+                    <div class="text-slate-400 italic py-2">System log clear. Awaiting hardware baseline telemetry stream...</div>
                 </div>
             </div>
 
         </main>
     </div>
+
+    <!-- Scrollbar Styling -->
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 
     <script src="app.js"></script>
 </body>
