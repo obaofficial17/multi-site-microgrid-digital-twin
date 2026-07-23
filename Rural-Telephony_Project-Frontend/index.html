@@ -10,6 +10,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:20px_20px]">
 
+    <!-- Auth Overlay -->
     <div id="auth-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
         <div class="bg-white border-t-4 border-t-emerald-600 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl space-y-6">
             <div class="text-center">
@@ -17,7 +18,7 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 </div>
                 <h2 class="text-2xl font-black text-slate-800">A1 Power Monitor</h2>
-                <p class="text-xs text-slate-500 mt-1 font-medium">Authorized Operator Portal Initialization</p>
+                <p class="text-xs text-slate-500 mt-1 font-medium">Authorized Operator Portal</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
@@ -34,8 +35,10 @@
         </div>
     </div>
 
+    <!-- Main App Content -->
     <div id="app-content" class="invisible">
         
+        <!-- Header Nav -->
         <header class="bg-white border-b border-slate-200 px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-40 shadow-sm">
             <div>
                 <div class="flex items-center gap-2">
@@ -43,7 +46,7 @@
                     <h1 class="text-lg font-extrabold tracking-tight text-slate-800">A1 Power <span class="text-emerald-600 font-medium">Site Monitor</span></h1>
                     <span id="heartbeat-badge" class="bg-slate-100 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-slate-200 shadow-inner">
                         <span id="heartbeat-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                        <span id="heartbeat-text" class="hidden sm:inline">Initializing...</span>
+                        <span id="heartbeat-text" class="hidden sm:inline">Connecting to SCADA...</span>
                     </span>
                 </div>
             </div>
@@ -76,25 +79,39 @@
             </div>
         </header>
 
+        <!-- Live Alarm Banner -->
+        <div id="live-alarm-banner" class="hidden bg-rose-600 text-white px-4 py-2 flex items-center justify-between shadow-md">
+            <div class="flex items-center gap-2 font-bold text-sm">
+                <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <span>ACTIVE ALARM TRIGGERED:</span>
+                <span id="live-alarm-desc" class="font-normal text-rose-100"></span>
+            </div>
+            <button onclick="document.getElementById('live-alarm-banner').classList.add('hidden')" class="text-rose-200 hover:text-white cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
         <main class="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
             
             <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
                 
                 <div class="flex flex-col sm:flex-row lg:flex-col gap-4 w-full lg:w-1/4">
+                    <!-- Security Directory -->
                     <div class="bg-white border-t-4 border-t-slate-400 rounded-lg p-3 sm:p-4 shadow-sm flex-1">
                         <h3 class="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2">Site Details</h3>
                         <div class="mt-2 space-y-2 text-[11px]">
                             <div class="flex justify-between lg:block">
                                 <span class="text-slate-500 font-medium">Security Personnel:</span>
-                                <span id="security-personnel" class="font-bold text-slate-800">-</span>
+                                <span id="security-personnel" class="font-bold text-slate-800">--</span>
                             </div>
                             <div class="flex justify-between lg:block">
                                 <span class="text-slate-500 font-medium">Phone Number:</span>
-                                <span id="security-phone" class="font-bold text-emerald-600">-</span>
+                                <span id="security-phone" class="font-bold text-emerald-600">--</span>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Live Weather -->
                     <div class="bg-white border-t-4 border-t-sky-400 rounded-lg p-3 sm:p-4 shadow-sm flex-1">
                         <h3 class="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2">Weather</h3>
                         <div class="mt-2 flex justify-between items-end">
@@ -114,7 +131,7 @@
                     <div class="bg-white border-t-4 border-t-emerald-500 rounded-lg p-3 sm:p-4 shadow-sm">
                         <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">Solar Gen</p>
                         <div class="mt-2 flex items-baseline gap-1">
-                            <span id="total-solar-val" class="text-2xl sm:text-3xl font-black text-slate-800">0.0</span>
+                            <span id="total-solar-val" class="text-2xl sm:text-3xl font-black text-slate-800">--</span>
                             <span class="text-[10px] font-bold text-slate-500">W</span>
                         </div>
                     </div>
@@ -122,7 +139,7 @@
                     <div class="bg-white border-t-4 border-t-blue-500 rounded-lg p-3 sm:p-4 shadow-sm">
                         <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">Load Draw</p>
                         <div class="mt-2 flex items-baseline gap-1">
-                            <span id="total-load-val" class="text-2xl sm:text-3xl font-black text-slate-800">0.0</span>
+                            <span id="total-load-val" class="text-2xl sm:text-3xl font-black text-slate-800">--</span>
                             <span class="text-[10px] font-bold text-slate-500">W</span>
                         </div>
                     </div>
@@ -130,10 +147,10 @@
                     <div class="bg-white border-t-4 border-t-teal-600 rounded-lg p-3 sm:p-4 shadow-sm col-span-2 md:col-span-1">
                         <div class="flex justify-between items-start">
                             <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">48V Bus System</p>
-                            <span id="soc-badge" class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-200 font-bold">0% SoC</span>
+                            <span id="soc-badge" class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-200 font-bold">--% SoC</span>
                         </div>
                         <div class="mt-2 flex items-baseline gap-1">
-                            <span id="bat-val" class="text-2xl sm:text-3xl font-black text-slate-800">0.00</span>
+                            <span id="bat-val" class="text-2xl sm:text-3xl font-black text-slate-800">--</span>
                             <span class="text-[10px] font-bold text-slate-500">V</span>
                         </div>
                         <div class="mt-2 bg-slate-100 h-1.5 rounded-full overflow-hidden shadow-inner">
@@ -143,6 +160,7 @@
                 </div>
             </div>
 
+            <!-- Fixed Chart Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 
                 <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm h-[300px] flex flex-col">
@@ -194,13 +212,14 @@
                 </div>
             </div>
 
+            <!-- Alarm Log -->
             <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                 <h3 class="text-xs font-bold text-slate-700 uppercase tracking-widest border-b border-slate-100 pb-3 flex items-center gap-2">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Historical Fault Intercept Log Register
                 </h3>
                 <div id="alarm-history-container" class="mt-4 max-h-[160px] overflow-y-auto space-y-2 font-mono text-[11px] text-slate-600 pr-2">
-                    <div class="text-slate-400 italic py-2">System log clear. Awaiting hardware baseline telemetry stream...</div>
+                    <div class="text-slate-400 italic py-2">System log clear. Fetching hardware baseline telemetry stream...</div>
                 </div>
             </div>
 
@@ -208,7 +227,6 @@
     </div>
 
     <style> canvas { background-color: #ffffff; } </style>
-
     <script src="app.js"></script>
 </body>
 </html>

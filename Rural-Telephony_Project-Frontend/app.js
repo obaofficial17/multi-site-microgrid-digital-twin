@@ -59,11 +59,12 @@ async function fetchLocalWeather(siteName) {
     if (!coords) return;
     try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,cloud_cover`);
+        if (!res.ok) return;
         const data = await res.json();
         weatherTemp.innerText = `${Math.round(data.current.temperature_2m)}°C`;
         weatherClouds.innerText = `${data.current.cloud_cover}%`;
     } catch (e) {
-        console.error("Weather fetch failed.");
+        console.warn("Weather fetch bypassed. Running in offline/firewall mode.");
     }
 }
 
@@ -94,7 +95,7 @@ function triggerAudibleSCADAAlert() {
 }
 
 // ==============================================================================
-// 1. SCADA CHART ENGINE 
+// 1. SCADA CHART ENGINE (PERFECT SMOOTH CURVES)
 // ==============================================================================
 const customCanvasBackgroundColor = {
     id: 'customCanvasBackgroundColor',
@@ -112,49 +113,47 @@ function initSCADACharts() {
     Chart.register(customCanvasBackgroundColor);
 
     const commonScales = {
-        x: { 
-            grid: { display: false }, 
-            ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 8 } 
-        },
-        y: { 
-            grid: { display: true, color: '#f1f5f9' }, 
-            ticks: { color: '#64748b', font: { size: 10 } } 
-        }
+        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 8 } },
+        y: { grid: { display: true, color: '#f1f5f9' }, ticks: { color: '#64748b', font: { size: 10 } } }
     };
     
+    // cubicInterpolationMode: 'monotone' guarantees perfect, non-jagged smooth curves
     const commonOptions = { 
         responsive: true, maintainAspectRatio: false, scales: commonScales, 
         plugins: { 
             legend: { display: true, position: 'top', labels: { color: '#334155', font: { size: 11, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } }, 
             customCanvasBackgroundColor: { color: 'white' } 
         },
-        elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 4 } } 
+        elements: { 
+            point: { radius: 0, hitRadius: 10, hoverRadius: 4 },
+            line: { tension: 0.4, cubicInterpolationMode: 'monotone', borderJoinStyle: 'round' } // Ensures perfectly smooth line strokes
+        } 
     };
 
     chartGen = new Chart(document.getElementById('solarPowerChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', borderWidth: 2, tension: 0.4, fill: false },
-            { label: 'CC2 Output (W)', data: [], borderColor: '#0ea5e9', borderWidth: 2, tension: 0.4, fill: false }
+            { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', borderWidth: 2, fill: false },
+            { label: 'CC2 Output (W)', data: [], borderColor: '#0ea5e9', borderWidth: 2, fill: false }
         ]}, options: commonOptions
     });
 
     chartVolt = new Chart(document.getElementById('solarVoltChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'CC1 Input (V)', data: [], borderColor: '#f59e0b', borderWidth: 2, tension: 0.4, fill: false },
-            { label: 'CC2 Input (V)', data: [], borderColor: '#3b82f6', borderWidth: 2, tension: 0.4, fill: false }
+            { label: 'CC1 Input (V)', data: [], borderColor: '#f59e0b', borderWidth: 2, fill: false },
+            { label: 'CC2 Input (V)', data: [], borderColor: '#3b82f6', borderWidth: 2, fill: false }
         ]}, options: commonOptions
     });
 
     chartLoad = new Chart(document.getElementById('loadPowerChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'CC1 Load Draw (W)', data: [], borderColor: '#6366f1', borderWidth: 2, tension: 0.4, fill: false },
-            { label: 'CC2 Load Draw (W)', data: [], borderColor: '#8b5cf6', borderWidth: 2, tension: 0.4, fill: false }
+            { label: 'CC1 Load Draw (W)', data: [], borderColor: '#6366f1', borderWidth: 2, fill: false },
+            { label: 'CC2 Load Draw (W)', data: [], borderColor: '#8b5cf6', borderWidth: 2, fill: false }
         ]}, options: commonOptions
     });
 
     chartBat = new Chart(document.getElementById('batteryStabilityChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'DC Bus Potential (V)', data: [], borderColor: '#0d9488', borderWidth: 2.5, tension: 0.4, fill: false }
+            { label: 'DC Bus Potential (V)', data: [], borderColor: '#0d9488', borderWidth: 2.5, fill: false }
         ]}, options: commonOptions
     });
 }
@@ -179,16 +178,10 @@ function appendMetricsToCharts(timeStr, r, limit) {
     });
 }
 
-function resetDashboardView() {
-    totalSolarVal.innerText = "0.0";
-    totalLoadVal.innerText = "0.0";
-    batVal.innerText = "0.00";
-    socBadge.innerText = "0% SoC";
-    socBar.style.width = "0%";
+// Clears ONLY the charts so the numbers don't flash to zero while fetching
+function clearChartsOnly() {
     liveAlarmBanner.classList.add('hidden');
     document.body.classList.remove('ring-4', 'ring-rose-500', 'ring-inset');
-    alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">System log clear. Fetching hardware baseline telemetry stream...</div>';
-    
     [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
         if(c) { c.data.labels = []; c.data.datasets.forEach(d => d.data = []); c.update('none'); }
     });
@@ -212,20 +205,17 @@ function kickHeartbeatCountdownTimer() {
     }, 40000);
 }
 
-// Returns a list of faults. isLiveBannerUpdate boolean determines if the screen turns red.
 function evaluateThresholdAlarms(r, isLiveBannerUpdate = false) {
     let internalFaultLogs = [];
     const batVolt = parseFloat(r.battery_voltage);
 
-    // Limit Alarms (Capped accurately to 55V Architecture)
-    if (batVolt > 55.0) internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `Battery Overvoltage (${batVolt}V) - Exceeds 55V maximum limit.` });
+    if (batVolt > 55.0) internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `Battery Overvoltage (${batVolt}V) - Exceeds 55V limit.` });
     else if (batVolt >= 53.0) internalFaultLogs.push({ type: 'APPROACHING HIGH LIMIT', msg: `Battery approaching upper limit (${batVolt}V).` });
     else if (batVolt <= 44.0) internalFaultLogs.push({ type: 'CRITICAL UNDERVOLTAGE', msg: `Battery Deep Discharge (${batVolt}V) - Immediate LVD Hazard.` });
     else if (batVolt <= 48.0) internalFaultLogs.push({ type: 'APPROACHING LOW LEVELS', msg: `Battery approaching low levels (${batVolt}V).` });
 
     if (r.cc1_pv_volts > 110.0 || r.cc2_pv_volts > 110.0) internalFaultLogs.push({ type: 'PV OVERVOLTAGE', msg: `Solar String Voltage Spike Detected.` });
 
-    // EXTRACT THE SPECIFIC TIME OF THE DATA POINT, NOT THE BROWSER'S TIME
     const rowTime = r.created_at ? new Date(r.created_at) : new Date();
     const watHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', hour12: false }).format(rowTime));
     
@@ -268,99 +258,128 @@ function renderScreenCards(r) {
     socBar.style.width = `${calculatedSoc}%`;
 }
 
+function renderEmptyCards() {
+    totalSolarVal.innerText = "--";
+    totalLoadVal.innerText = "--";
+    batVal.innerText = "--";
+    socBadge.innerText = "N/A";
+    socBar.style.width = "0%";
+}
+
 async function syncNodeHistory() {
-    const siteName = siteSelector.value;
-    const startVal = startTimeInput.value;
-    const endVal = endTimeInput.value;
-    
-    resetDashboardView(); 
-    fetchLocalWeather(siteName);
-    
-    const meta = SITE_DIRECTORY[siteName];
-    if (meta) {
-        securityPersonnel.innerText = meta.security;
-        securityPhone.innerText = meta.phone;
-    }
+    try {
+        const siteName = siteSelector.value;
+        const startVal = startTimeInput.value;
+        const endVal = endTimeInput.value;
+        
+        clearChartsOnly(); 
+        fetchLocalWeather(siteName);
+        
+        const meta = SITE_DIRECTORY[siteName];
+        if (meta) {
+            securityPersonnel.innerText = meta.security;
+            securityPhone.innerText = meta.phone;
+        }
 
-    let query = supabaseClient
-        .from('location_telemetry')
-        .select('*')
-        .eq('site_id', siteName)
-        .order('created_at', { ascending: true }); 
-
-    if (startVal) query = query.gte('created_at', new Date(startVal).toISOString());
-    if (endVal) query = query.lte('created_at', new Date(endVal).toISOString());
-    
-    if (!startVal && !endVal) {
-        query = supabaseClient
+        let query = supabaseClient
             .from('location_telemetry')
             .select('*')
             .eq('site_id', siteName)
-            .order('created_at', { ascending: false })
-            .limit(50);
-    } else {
-        query = query.limit(2000); 
-    }
+            .order('created_at', { ascending: true }); 
 
-    const { data } = await query;
-
-    if (data && data.length > 0) {
-        const processedData = (!startVal && !endVal) ? data.reverse() : data;
+        if (startVal) query = query.gte('created_at', new Date(startVal).toISOString());
+        if (endVal) query = query.lte('created_at', new Date(endVal).toISOString());
         
-        let accumulatedLogHtml = "";
-        let anyAlarmsFound = false;
-
-        // Process charting
-        processedData.forEach(row => {
-            const stamp = formatWATTimestamp(row.created_at);
-            appendMetricsToCharts(stamp, row, processedData.length);
-        });
-
-        // Process alarms for the last 100 points so the browser doesn't freeze on massive date ranges
-        const alarmData = processedData.slice(-100);
-        
-        alarmData.forEach((row, index) => {
-            const isLastPoint = (index === alarmData.length - 1); // Treat the very last point as "Live" to update the banner
-            const logs = evaluateThresholdAlarms(row, isLastPoint); 
-            
-            if (logs.length > 0) {
-                anyAlarmsFound = true;
-                const stamp = formatWATTimestamp(row.created_at);
-                let rowHtml = "";
-                logs.forEach(alert => {
-                    rowHtml += `
-                        <div class="bg-white border-l-2 border-l-rose-500 border border-slate-200 rounded p-3 text-slate-700 shadow-sm space-y-1.5">
-                            <div class="flex justify-between font-bold items-center border-b border-slate-100 pb-1">
-                                <span class="text-xs text-slate-800">${stamp} ⚠️ ${row.site_id}</span>
-                                <span class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-mono uppercase">${alert.type}</span>
-                            </div>
-                            <p class="text-slate-600 text-[11px] font-sans font-medium">${alert.msg}</p>
-                        </div>
-                    `;
-                });
-                accumulatedLogHtml = rowHtml + accumulatedLogHtml; // Newest on top
-            }
-        });
-
-        if (anyAlarmsFound) {
-            alarmHistoryContainer.innerHTML = accumulatedLogHtml;
+        if (!startVal && !endVal) {
+            // Default load fetches newest 50 points
+            query = supabaseClient.from('location_telemetry').select('*').eq('site_id', siteName).order('created_at', { ascending: false }).limit(50);
         } else {
-            alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">System log clear. No faults detected in this dataset.</div>';
+            query = query.limit(2000); 
         }
 
-        renderScreenCards(processedData[processedData.length - 1]);
-    } else {
-        alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">No telemetry data found for this site/window.</div>';
+        const { data, error } = await query;
+        if (error) throw error; 
+
+        if (data && data.length > 0) {
+            const processedData = (!startVal && !endVal) ? data.reverse() : data;
+            const latestDataPoint = processedData[processedData.length - 1];
+            
+            // Instantly render cards with real-time (or last known) data
+            renderScreenCards(latestDataPoint);
+            
+            // Evaluate if this data is "Real-Time" or "Offline / Last Known"
+            if (!isViewingHistory) {
+                const pointTime = new Date(latestDataPoint.created_at).getTime();
+                const nowTime = new Date().getTime();
+                const diffMinutes = (nowTime - pointTime) / (1000 * 60);
+
+                if (diffMinutes > 15) { // If the hardware hasn't sent data in 15 mins
+                    heartbeatBadge.className = "bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-200 shadow-sm";
+                    heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-amber-500";
+                    heartbeatText.innerText = "Site Offline (Showing Last Known)";
+                } else {
+                    kickHeartbeatCountdownTimer();
+                }
+            }
+
+            let accumulatedLogHtml = "";
+            let anyAlarmsFound = false;
+
+            processedData.forEach(row => {
+                const stamp = formatWATTimestamp(row.created_at);
+                appendMetricsToCharts(stamp, row, processedData.length);
+            });
+
+            const alarmData = processedData.slice(-100);
+            
+            alarmData.forEach((row, index) => {
+                const isLastPoint = (index === alarmData.length - 1); 
+                const logs = evaluateThresholdAlarms(row, isLastPoint); 
+                
+                if (logs.length > 0) {
+                    anyAlarmsFound = true;
+                    const stamp = formatWATTimestamp(row.created_at);
+                    let rowHtml = "";
+                    logs.forEach(alert => {
+                        rowHtml += `
+                            <div class="bg-white border-l-2 border-l-rose-500 border border-slate-200 rounded p-3 text-slate-700 shadow-sm space-y-1.5">
+                                <div class="flex justify-between font-bold items-center border-b border-slate-100 pb-1">
+                                    <span class="text-xs text-slate-800">${stamp} ⚠️ ${row.site_id}</span>
+                                    <span class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-mono uppercase">${alert.type}</span>
+                                </div>
+                                <p class="text-slate-600 text-[11px] font-sans font-medium">${alert.msg}</p>
+                            </div>
+                        `;
+                    });
+                    accumulatedLogHtml = rowHtml + accumulatedLogHtml; 
+                }
+            });
+
+            if (anyAlarmsFound) {
+                alarmHistoryContainer.innerHTML = accumulatedLogHtml;
+            } else {
+                alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">System log clear. No faults detected in this dataset.</div>';
+            }
+        } else {
+            renderEmptyCards();
+            heartbeatBadge.className = "bg-rose-50 text-rose-600 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-200 shadow-sm";
+            heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
+            heartbeatText.innerText = "No Data Found for Site";
+            alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">No telemetry data found for this site/window.</div>';
+        }
+    } catch (err) {
+        console.error("Critical Fetch Error: ", err);
+        renderEmptyCards();
+        alarmHistoryContainer.innerHTML = `<div class="text-rose-600 font-bold py-2">Error connecting to database: ${err.message}</div>`;
     }
 }
 
-// Initialize live feed exactly ONCE globally.
 let isLiveFeedSubscribed = false;
 function subscribeLiveFeed() {
     if (isLiveFeedSubscribed) return;
     
     activeChannel = supabaseClient
-        .channel('public:location_telemetry')
+        .channel('global-telemetry-feed')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_telemetry' }, 
         (payload) => {
             if (payload.new.site_id === siteSelector.value && !isViewingHistory) {
@@ -370,10 +389,9 @@ function subscribeLiveFeed() {
                 renderScreenCards(row);
                 appendMetricsToCharts(stamp, row, 50); 
                 
-                // Inject newly arrived live alarms directly into the HTML
                 const logs = evaluateThresholdAlarms(row, true); 
                 if (logs.length > 0) {
-                    if (alarmHistoryContainer.innerText.includes("clear") || alarmHistoryContainer.innerText.includes("baseline")) {
+                    if (alarmHistoryContainer.innerText.includes("clear") || alarmHistoryContainer.innerText.includes("baseline") || alarmHistoryContainer.innerText.includes("No telemetry")) {
                         alarmHistoryContainer.innerHTML = "";
                     }
                     let newLogsHtml = "";
