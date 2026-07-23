@@ -49,6 +49,7 @@ const socBar = document.getElementById('soc-bar');
 // Global Configurations
 let chartGen = null, chartVolt = null, chartLoad = null, chartBat = null;
 let activeChannel = null, heartbeatTimer = null, audioCtx = null;
+let isViewingHistory = false; // Flag to pause live updates
 
 // ==============================================================================
 // 0. OPEN-METEO WEATHER & UTILITIES
@@ -93,10 +94,8 @@ function triggerAudibleSCADAAlert() {
 }
 
 // ==============================================================================
-// 1. SCADA CHART ENGINE (With Custom Export Plugin)
+// 1. SCADA CHART ENGINE
 // ==============================================================================
-
-// Plugin to force a solid white background when exporting the canvas to PNG
 const customCanvasBackgroundColor = {
     id: 'customCanvasBackgroundColor',
     beforeDraw: (chart, args, options) => {
@@ -112,45 +111,66 @@ const customCanvasBackgroundColor = {
 function initSCADACharts() {
     Chart.register(customCanvasBackgroundColor);
 
-    // Turned off grid lines (display: false) and disabled native legend
     const commonScales = {
-        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 45, minRotation: 45 } },
-        y: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+        x: { 
+            grid: { display: false }, 
+            ticks: { 
+                color: '#64748b', 
+                font: { size: 9 }, 
+                maxRotation: 45, 
+                minRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 8 // Prevents bundling of X-axis labels
+            } 
+        },
+        y: { 
+            grid: { display: true, color: '#f1f5f9' }, 
+            ticks: { color: '#64748b', font: { size: 10 } } 
+        }
     };
+    
     const commonOptions = { 
         responsive: true, 
         maintainAspectRatio: false, 
         scales: commonScales, 
         plugins: { 
-            legend: { display: false }, // Using custom fixed HTML legend instead
+            legend: { 
+                display: true, 
+                position: 'top',
+                labels: { color: '#334155', font: { size: 11, weight: 'bold' }, usePointStyle: true, boxWidth: 8 }
+            }, 
             customCanvasBackgroundColor: { color: 'white' } 
-        } 
+        },
+        elements: {
+            point: { radius: 0, hitRadius: 10, hoverRadius: 4 } // Cleans up lines
+        }
     };
 
+    // Notice the tension: 0.4 for smooth curves
     chartGen = new Chart(document.getElementById('solarPowerChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', backgroundColor: '#10b98120', borderWidth: 2, fill: true, tension: 0.2, pointRadius: 1 },
-            { label: 'CC2 Output (W)', data: [], borderColor: '#0ea5e9', backgroundColor: '#0ea5e920', borderWidth: 2, fill: true, tension: 0.2, pointRadius: 1 }
+            { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', borderWidth: 2, tension: 0.4, fill: false },
+            { label: 'CC2 Output (W)', data: [], borderColor: '#0ea5e9', borderWidth: 2, tension: 0.4, fill: false }
         ]}, options: commonOptions
     });
 
     chartVolt = new Chart(document.getElementById('solarVoltChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'CC1 Input (V)', data: [], borderColor: '#f59e0b', borderWidth: 2, tension: 0.2, pointRadius: 1 },
-            { label: 'CC2 Input (V)', data: [], borderColor: '#3b82f6', borderWidth: 2, tension: 0.2, pointRadius: 1 }
+            { label: 'CC1 Input (V)', data: [], borderColor: '#f59e0b', borderWidth: 2, tension: 0.4, fill: false },
+            { label: 'CC2 Input (V)', data: [], borderColor: '#3b82f6', borderWidth: 2, tension: 0.4, fill: false }
         ]}, options: commonOptions
     });
 
     chartLoad = new Chart(document.getElementById('loadPowerChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'CC1 Load Draw (W)', data: [], borderColor: '#6366f1', borderWidth: 2, tension: 0.2, pointRadius: 1 },
-            { label: 'CC2 Load Draw (W)', data: [], borderColor: '#8b5cf6', borderWidth: 2, tension: 0.2, pointRadius: 1 }
+            { label: 'CC1 Load Draw (W)', data: [], borderColor: '#6366f1', borderWidth: 2, tension: 0.4, fill: false },
+            { label: 'CC2 Load Draw (W)', data: [], borderColor: '#8b5cf6', borderWidth: 2, tension: 0.4, fill: false }
         ]}, options: commonOptions
     });
 
     chartBat = new Chart(document.getElementById('batteryStabilityChart'), {
         type: 'line', data: { labels: [], datasets: [
-            { label: 'DC Bus Potential (V)', data: [], borderColor: '#0d9488', backgroundColor: '#0d948815', borderWidth: 2.5, fill: true, tension: 0.2, pointRadius: 1 }
+            { label: 'DC Bus Potential (V)', data: [], borderColor: '#0d9488', borderWidth: 2.5, tension: 0.4, fill: false }
         ]}, options: commonOptions
     });
 }
@@ -175,11 +195,30 @@ function appendMetricsToCharts(timeStr, r, limit) {
     });
 }
 
+// Wipe cards immediately when switching sites to avoid confusing leftover data
+function resetDashboardView() {
+    totalSolarVal.innerText = "0.0";
+    totalLoadVal.innerText = "0.0";
+    batVal.innerText = "0.00";
+    socBadge.innerText = "0% SoC";
+    socBar.style.width = "0%";
+    
+    [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
+        if(c) { 
+            c.data.labels = []; 
+            c.data.datasets.forEach(d => d.data = []); 
+            c.update('none'); 
+        }
+    });
+}
+
 // ==============================================================================
 // 2. HARDWARE HEARTBEAT & THRESHOLD ALARM INTERCEPT
 // ==============================================================================
 function kickHeartbeatCountdownTimer() {
     clearTimeout(heartbeatTimer);
+    if(isViewingHistory) return;
+
     heartbeatBadge.className = "bg-emerald-50 text-emerald-600 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 shadow-sm";
     heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping";
     heartbeatText.innerText = "DTU Link Active";
@@ -195,9 +234,8 @@ function evaluateThresholdAlarms(r) {
     let internalFaultLogs = [];
     const batVolt = parseFloat(r.battery_voltage);
 
-    // New Battery Limit Alarms based on 55V Max architecture
-    if (batVolt >= 55.0) internalFaultLogs.push({ type: 'MAX VOLTAGE', msg: `Battery at Maximum Voltage Limit (${batVolt}V).` });
-    else if (batVolt >= 53.0) internalFaultLogs.push({ type: 'APPROACHING HIGH LIMIT', msg: `Battery approaching high limit (${batVolt}V).` });
+    if (batVolt > 55.0) internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `Battery Overvoltage (${batVolt}V) - Exceeds 55V maximum limit.` });
+    else if (batVolt >= 53.0) internalFaultLogs.push({ type: 'APPROACHING HIGH LIMIT', msg: `Battery approaching upper limit (${batVolt}V).` });
     else if (batVolt <= 44.0) internalFaultLogs.push({ type: 'CRITICAL UNDERVOLTAGE', msg: `Battery Deep Discharge (${batVolt}V) - Immediate LVD Hazard.` });
     else if (batVolt <= 48.0) internalFaultLogs.push({ type: 'APPROACHING LOW LEVELS', msg: `Battery approaching low levels (${batVolt}V).` });
 
@@ -205,9 +243,7 @@ function evaluateThresholdAlarms(r) {
 
     const watHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', hour12: false }).format(new Date()));
     if (watHour >= 8 && watHour <= 17) {
-        if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0)) {
-            internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `Sub-optimal daylight harvesting detected.` });
-        }
+        if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0)) internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `Sub-optimal daylight harvesting detected.` });
     } 
 
     if (internalFaultLogs.length > 0) {
@@ -241,13 +277,10 @@ function evaluateThresholdAlarms(r) {
 // ==============================================================================
 function renderScreenCards(r) {
     if(!r) return;
-    
-    // New Calculation logic capping at 55V Maximum. (Assumes 42V as absolute 0%)
     const maxVolt = 55.0;
-    const minVolt = 42.0;
+    const minVolt = 42.0; 
     let calculatedSoc = ((r.battery_voltage - minVolt) / (maxVolt - minVolt)) * 100;
-    // Clamp the value strictly between 0 and 100%
-    calculatedSoc = Math.max(0, Math.min(100, calculatedSoc));
+    calculatedSoc = Math.max(0, Math.min(100, calculatedSoc)); 
 
     totalSolarVal.innerText = (r.cc1_pv_watts + r.cc2_pv_watts).toFixed(1);
     totalLoadVal.innerText = (r.cc1_load_watts + r.cc2_load_watts).toFixed(1);
@@ -257,18 +290,12 @@ function renderScreenCards(r) {
     socBar.style.width = `${calculatedSoc}%`;
 }
 
-function adjustChartScrollWidths(dataLength) {
-    const newWidth = dataLength > 30 ? `${dataLength * 25}px` : '100%';
-    ['wrapper-gen', 'wrapper-volt', 'wrapper-load', 'wrapper-bat'].forEach(id => {
-        document.getElementById(id).style.minWidth = newWidth;
-    });
-}
-
 async function syncNodeHistory() {
     const siteName = siteSelector.value;
     const startVal = startTimeInput.value;
     const endVal = endTimeInput.value;
     
+    resetDashboardView(); // Blanks out the old site immediately
     fetchLocalWeather(siteName);
     
     const meta = SITE_DIRECTORY[siteName];
@@ -294,18 +321,13 @@ async function syncNodeHistory() {
             .order('created_at', { ascending: false })
             .limit(50);
     } else {
-        query = query.limit(500); 
+        query = query.limit(2000); 
     }
 
     const { data } = await query;
 
     if (data && data.length > 0) {
-        [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
-            if(c) { c.data.labels = []; c.data.datasets.forEach(d => d.data = []); }
-        });
-        
         const processedData = (!startVal && !endVal) ? data.reverse() : data;
-        adjustChartScrollWidths(processedData.length);
         
         processedData.forEach(row => {
             const stamp = formatWATTimestamp(row.created_at);
@@ -315,14 +337,17 @@ async function syncNodeHistory() {
     }
 }
 
+// Initialize live feed exactly ONCE globally.
+let isLiveFeedSubscribed = false;
 function subscribeLiveFeed() {
-    if (activeChannel) supabaseClient.removeChannel(activeChannel);
-
+    if (isLiveFeedSubscribed) return;
+    
     activeChannel = supabaseClient
-        .channel('live-scada-stream')
+        .channel('public:location_telemetry')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_telemetry' }, 
         (payload) => {
-            if (payload.new.site_id === siteSelector.value) {
+            // Only update the UI if the new row belongs to the dropdown AND we aren't exploring the past
+            if (payload.new.site_id === siteSelector.value && !isViewingHistory) {
                 kickHeartbeatCountdownTimer();
                 const row = payload.new;
                 const stamp = formatWATTimestamp(row.created_at);
@@ -332,38 +357,45 @@ function subscribeLiveFeed() {
             }
         })
         .subscribe();
+        
+    isLiveFeedSubscribed = true;
 }
 
 // ==============================================================================
 // 4. EVENT LISTENERS
 // ==============================================================================
 siteSelector.addEventListener('change', () => {
-    syncNodeHistory();
-    subscribeLiveFeed();
+    syncNodeHistory(); // Live Feed handles the switch dynamically without crashing
 });
 
 fetchRangeBtn.addEventListener('click', () => {
-    if (activeChannel) {
-        supabaseClient.removeChannel(activeChannel);
-        activeChannel = null;
+    const startVal = startTimeInput.value;
+    const endVal = endTimeInput.value;
+    
+    if (startVal || endVal) {
+        isViewingHistory = true; // Pauses live updates silently
         heartbeatText.innerText = "Viewing History (Live Paused)";
         heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse";
+        heartbeatBadge.className = "bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-200 shadow-sm";
+    } else {
+        isViewingHistory = false;
+        heartbeatText.innerText = "Reconnecting...";
     }
     syncNodeHistory(); 
 });
 
 // ==============================================================================
-// 5. CHART EXPORT UTILITY
+// 5. CHART EXPORT UTILITY 
 // ==============================================================================
 function downloadChart(canvasId, filename) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     
-    // The customCanvasBackgroundColor plugin forces the white background on generation
+    let siteNameStr = siteSelector.value.replace(/\s+/g, '_').replace(/-/g, '');
     const imageURI = canvas.toDataURL('image/png');
     
     const link = document.createElement('a');
-    link.download = `${filename}_${new Date().toISOString().slice(0,10)}.png`;
+    link.download = `${siteNameStr}_${filename}_${new Date().toISOString().slice(0,10)}.png`;
     link.href = imageURI;
     document.body.appendChild(link);
     link.click();
@@ -398,6 +430,9 @@ loginForm.addEventListener('submit', async (e) => {
 
 logoutBtn.addEventListener('click', async () => {
     await supabaseClient.auth.signOut();
+    // Destroy memory entirely so auto-login stops
+    localStorage.clear();
+    sessionStorage.clear();
     window.location.reload();
 });
 
