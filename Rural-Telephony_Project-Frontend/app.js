@@ -3,15 +3,15 @@ const SUPABASE_URL = "https://icgryayptwjgcpqhwsxx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_U8VMbs1XABYo62cOslpNkw_PfN6rPRl";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Multi-Tenant Infrastructure Security Contact & GPS Directory
+// Multi-Tenant Infrastructure Security Contact & GPS Directory (Simplified)
 const SITE_DIRECTORY = {
-    "Site 1 - Epe": { responder: "Epe SG", hotline: "+234 803 111 0001", supervisor: "Engr. Lekan", lat: 6.58, lon: 3.98 },
-    "Site 2 - Oyere": { responder: "Oyere SG", hotline: "+234 803 111 0002", supervisor: "Tosin", lat: 7.52, lon: 4.50 },
-    "Site 3 - Aiyetiabo": { responder: "Aiyetiabo SG", hotline: "+234 803 111 0003", supervisor: "Lekan (Field Ops)", lat: 7.50, lon: 4.55 },
-    "Site 4 - Emuren": { responder: "Emuren SG", hotline: "+234 803 111 0004", supervisor: "On-Site Resident Engr", lat: 6.73, lon: 3.65 },
-    "Site 5 - Igirigi": { responder: "Igirigi SG", hotline: "+234 803 111 0005", supervisor: "Tosin", lat: 7.60, lon: 4.50 },
-    "Site 6 - Gbedu": { responder: "Gbedu SG", hotline: "+234 803 111 0006", supervisor: "Lekan", lat: 7.30, lon: 3.90 },
-    "Site 7 - Obbo Aiyegunle": { responder: "Obbo Aiyegunle SG", hotline: "+234 803 111 0007", supervisor: "HQ Admin Lead", lat: 8.12, lon: 5.10 }
+    "Site 1 - Epe": { security: "Lekan / Epe SG", phone: "+234 803 111 0001", lat: 6.58, lon: 3.98 },
+    "Site 2 - Oyere": { security: "Tosin / Oyere SG", phone: "+234 803 111 0002", lat: 7.52, lon: 4.50 },
+    "Site 3 - Aiyetiabo": { security: "Aiyetiabo Team", phone: "+234 803 111 0003", lat: 7.50, lon: 4.55 },
+    "Site 4 - Emuren": { security: "Emuren Resident SG", phone: "+234 803 111 0004", lat: 6.73, lon: 3.65 },
+    "Site 5 - Igirigi": { security: "Igirigi Patrol", phone: "+234 803 111 0005", lat: 7.60, lon: 4.50 },
+    "Site 6 - Gbedu": { security: "Gbedu Security", phone: "+234 803 111 0006", lat: 7.30, lon: 3.90 },
+    "Site 7 - Obbo Aiyegunle": { security: "Obbo HQ Guard", phone: "+234 803 111 0007", lat: 8.12, lon: 5.10 }
 };
 
 // DOM Pointers
@@ -22,15 +22,16 @@ const authError = document.getElementById('auth-error');
 const logoutBtn = document.getElementById('logout-btn');
 
 const siteSelector = document.getElementById('site-selector');
-const historyLimitSelect = document.getElementById('history-limit');
+const startTimeInput = document.getElementById('start-time');
+const endTimeInput = document.getElementById('end-time');
+const fetchRangeBtn = document.getElementById('fetch-range-btn');
 
 const heartbeatBadge = document.getElementById('heartbeat-badge');
 const heartbeatDot = document.getElementById('heartbeat-dot');
 const heartbeatText = document.getElementById('heartbeat-text');
 
-const securitySupervisor = document.getElementById('security-supervisor');
-const securityResponder = document.getElementById('security-responder');
-const securityHotline = document.getElementById('security-hotline');
+const securityPersonnel = document.getElementById('security-personnel');
+const securityPhone = document.getElementById('security-phone');
 
 const weatherTemp = document.getElementById('weather-temp');
 const weatherClouds = document.getElementById('weather-clouds');
@@ -48,7 +49,6 @@ const socBar = document.getElementById('soc-bar');
 // Global Configurations
 let chartGen = null, chartVolt = null, chartLoad = null, chartBat = null;
 let activeChannel = null, heartbeatTimer = null, audioCtx = null;
-let currentLimit = 15; // Default history window limit
 
 // ==============================================================================
 // 0. OPEN-METEO WEATHER & UTILITIES
@@ -66,7 +66,6 @@ async function fetchLocalWeather(siteName) {
     }
 }
 
-// Convert UTC DB Timestamp to explicitly formatted Nigerian WAT (e.g. "21 Jul, 14:36")
 function formatWATTimestamp(dateString) {
     return new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Africa/Lagos',
@@ -94,7 +93,7 @@ function triggerAudibleSCADAAlert() {
 }
 
 // ==============================================================================
-// 1. SCADA CHART ENGINE (Adjusted for Date rendering)
+// 1. SCADA CHART ENGINE
 // ==============================================================================
 function initSCADACharts() {
     const commonScales = {
@@ -131,10 +130,10 @@ function initSCADACharts() {
     });
 }
 
-function appendMetricsToCharts(timeStr, r) {
+function appendMetricsToCharts(timeStr, r, limit) {
     [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
         c.data.labels.push(timeStr);
-        if(c.data.labels.length > currentLimit) c.data.labels.shift();
+        if(c.data.labels.length > limit) c.data.labels.shift();
     });
 
     chartGen.data.datasets[0].data.push(r.cc1_pv_watts);
@@ -146,8 +145,8 @@ function appendMetricsToCharts(timeStr, r) {
     chartBat.data.datasets[0].data.push(r.battery_voltage);
 
     [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
-        if(c.data.datasets[0].data.length > currentLimit) c.data.datasets.forEach(d => d.data.shift());
-        c.update('none'); // Update without animation for smoother long-scrolling
+        if(c.data.datasets[0].data.length > limit) c.data.datasets.forEach(d => d.data.shift());
+        c.update('none'); // Update without animation
     });
 }
 
@@ -156,12 +155,12 @@ function appendMetricsToCharts(timeStr, r) {
 // ==============================================================================
 function kickHeartbeatCountdownTimer() {
     clearTimeout(heartbeatTimer);
-    heartbeatBadge.className = "bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-emerald-200 shadow-sm";
+    heartbeatBadge.className = "bg-emerald-50 text-emerald-600 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 shadow-sm";
     heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping";
     heartbeatText.innerText = "DTU Link Active";
 
     heartbeatTimer = setTimeout(() => {
-        heartbeatBadge.className = "bg-rose-50 text-rose-600 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-rose-200 shadow-sm animate-pulse";
+        heartbeatBadge.className = "bg-rose-50 text-rose-600 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-200 shadow-sm animate-pulse";
         heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
         heartbeatText.innerText = "Connection Dormant";
     }, 40000);
@@ -171,33 +170,18 @@ function evaluateThresholdAlarms(r) {
     let internalFaultLogs = [];
     const batVolt = parseFloat(r.battery_voltage);
 
-    // Battery Alarms
-    if (batVolt < 44.0) {
-        internalFaultLogs.push({ type: 'CRITICAL UNDERVOLTAGE', msg: `CRITICAL: Battery Voltage Deep Discharge (${batVolt}V) - Immediate Low Voltage Disconnect (LVD) Hazard.` });
-    } else if (batVolt < 46.8) {
-        internalFaultLogs.push({ type: 'UNDERVOLTAGE WARNING', msg: `WARNING: Battery Voltage Low (${batVolt}V) - DC Bus Approaching Discharge Threshold.` });
-    }
-    if (batVolt > 58.4) {
-        internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `CRITICAL: Battery Overvoltage Spike (${batVolt}V) - Potential Charge Controller Regulation Failure / BMS Trip.` });
-    }
+    if (batVolt < 44.0) internalFaultLogs.push({ type: 'CRITICAL UNDERVOLTAGE', msg: `Battery Deep Discharge (${batVolt}V) - Immediate LVD Hazard.` });
+    else if (batVolt < 46.8) internalFaultLogs.push({ type: 'UNDERVOLTAGE WARNING', msg: `Battery Low (${batVolt}V) - Approaching Discharge Threshold.` });
+    if (batVolt > 58.4) internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `Battery Overvoltage (${batVolt}V) - Regulation Failure.` });
+    if (r.cc1_pv_volts > 110.0 || r.cc2_pv_volts > 110.0) internalFaultLogs.push({ type: 'PV OVERVOLTAGE', msg: `Solar String Voltage Spike Detected.` });
 
-    // Solar Overvoltage Alarms
-    if (r.cc1_pv_volts > 110.0 || r.cc2_pv_volts > 110.0) {
-        internalFaultLogs.push({ type: 'PV OVERVOLTAGE', msg: `OVERVOLTAGE: Solar String Voltage Spike Detected (CC1: ${r.cc1_pv_volts}V, CC2: ${r.cc2_pv_volts}V).` });
-    }
-
-    // Solar Under-Generation Algorithm (Fixed to only trigger during Nigerian Daylight Hours)
-    // Extract strictly the localized hour integer (0 - 23) in Africa/Lagos
     const watHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', hour12: false }).format(new Date()));
-    
-    // Condition: Is it between 8:00 AM and 5:00 PM WAT?
     if (watHour >= 8 && watHour <= 17) {
         if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0)) {
-            internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `UNDER-GENERATION: Sub-optimal daylight harvesting detected during peak generation window.` });
+            internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `Sub-optimal daylight harvesting detected.` });
         }
-    } // If it's night time, the check is completely ignored.
+    } 
 
-    // Dispatch Alerts
     if (internalFaultLogs.length > 0) {
         liveAlarmDesc.innerText = `${internalFaultLogs[0].type}: ${internalFaultLogs[0].msg}`;
         liveAlarmBanner.classList.remove('hidden');
@@ -225,7 +209,7 @@ function evaluateThresholdAlarms(r) {
 }
 
 // ==============================================================================
-// 3. UI DASHBOARD REFRESH, TIME TRAVEL & REALTIME SYNC
+// 3. UI DASHBOARD REFRESH & CUSTOM TIME-RANGE QUERY
 // ==============================================================================
 function renderScreenCards(r) {
     if(!r) return;
@@ -236,11 +220,8 @@ function renderScreenCards(r) {
     socBar.style.width = `${r.battery_soc_percent}%`;
 }
 
-// Resizes the internal chart wrapper to allow horizontal scrolling if history > 15
-function adjustChartScrollWidths(limit) {
-    // If limit is > 30, we expand the canvas width so the user can scroll. 
-    // Approx 25px per data point makes it readable.
-    const newWidth = limit > 30 ? `${limit * 25}px` : '100%';
+function adjustChartScrollWidths(dataLength) {
+    const newWidth = dataLength > 30 ? `${dataLength * 25}px` : '100%';
     ['wrapper-gen', 'wrapper-volt', 'wrapper-load', 'wrapper-bat'].forEach(id => {
         document.getElementById(id).style.minWidth = newWidth;
     });
@@ -248,37 +229,53 @@ function adjustChartScrollWidths(limit) {
 
 async function syncNodeHistory() {
     const siteName = siteSelector.value;
-    currentLimit = parseInt(historyLimitSelect.value);
+    const startVal = startTimeInput.value;
+    const endVal = endTimeInput.value;
     
-    // 1. Update UI and Data structures
-    adjustChartScrollWidths(currentLimit);
     fetchLocalWeather(siteName);
     
     const meta = SITE_DIRECTORY[siteName];
     if (meta) {
-        securitySupervisor.innerText = meta.supervisor;
-        securityResponder.innerText = meta.responder;
-        securityHotline.innerText = meta.hotline;
+        securityPersonnel.innerText = meta.security;
+        securityPhone.innerText = meta.phone;
     }
 
-    // 2. Fetch required amount of data points based on user's Time Window choice
-    let { data } = await supabaseClient
+    let query = supabaseClient
         .from('location_telemetry')
         .select('*')
         .eq('site_id', siteName)
-        .order('id', { ascending: false })
-        .limit(currentLimit);
+        .order('created_at', { ascending: true }); 
+
+    if (startVal) query = query.gte('created_at', new Date(startVal).toISOString());
+    if (endVal) query = query.lte('created_at', new Date(endVal).toISOString());
+    
+    // Default to last 50 points if no dates selected to prevent massive payload crashing
+    if (!startVal && !endVal) {
+        query = supabaseClient
+            .from('location_telemetry')
+            .select('*')
+            .eq('site_id', siteName)
+            .order('created_at', { ascending: false })
+            .limit(50);
+    } else {
+        query = query.limit(500); 
+    }
+
+    const { data } = await query;
 
     if (data && data.length > 0) {
         [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
             if(c) { c.data.labels = []; c.data.datasets.forEach(d => d.data = []); }
         });
         
-        data.reverse().forEach(row => {
+        const processedData = (!startVal && !endVal) ? data.reverse() : data;
+        adjustChartScrollWidths(processedData.length);
+        
+        processedData.forEach(row => {
             const stamp = formatWATTimestamp(row.created_at);
-            appendMetricsToCharts(stamp, row);
+            appendMetricsToCharts(stamp, row, processedData.length);
         });
-        renderScreenCards(data[data.length - 1]);
+        renderScreenCards(processedData[processedData.length - 1]);
     }
 }
 
@@ -289,32 +286,57 @@ function subscribeLiveFeed() {
         .channel('live-scada-stream')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_telemetry' }, 
         (payload) => {
-            // Only process if the incoming site matches the dropdown
             if (payload.new.site_id === siteSelector.value) {
                 kickHeartbeatCountdownTimer();
                 const row = payload.new;
                 const stamp = formatWATTimestamp(row.created_at);
                 renderScreenCards(row);
-                appendMetricsToCharts(stamp, row);
+                // Hardcode limit to 50 for live streaming to prevent memory leak
+                appendMetricsToCharts(stamp, row, 50); 
                 evaluateThresholdAlarms(row);
             }
         })
         .subscribe();
 }
 
-// Event Listeners for Dropdowns
+// ==============================================================================
+// 4. EVENT LISTENERS
+// ==============================================================================
 siteSelector.addEventListener('change', () => {
     syncNodeHistory();
     subscribeLiveFeed();
 });
 
-historyLimitSelect.addEventListener('change', () => {
+fetchRangeBtn.addEventListener('click', () => {
+    // Pause live data insertion when querying history so the charts don't get scrambled
+    if (activeChannel) {
+        supabaseClient.removeChannel(activeChannel);
+        activeChannel = null;
+        heartbeatText.innerText = "Viewing History (Live Paused)";
+        heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse";
+    }
     syncNodeHistory(); 
-    // We don't need to resubscribe to live feed, just fetch history.
 });
 
 // ==============================================================================
-// 4. AUTHENTICATION & MOUNT GATEKEEPER
+// 5. CHART EXPORT UTILITY
+// ==============================================================================
+function downloadChart(canvasId, filename) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const imageURI = canvas.toDataURL('image/png');
+    
+    const link = document.createElement('a');
+    link.download = `${filename}_${new Date().toISOString().slice(0,10)}.png`;
+    link.href = imageURI;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ==============================================================================
+// 6. AUTHENTICATION & MOUNT GATEKEEPER
 // ==============================================================================
 function mountDashboard() {
     authOverlay.classList.add('opacity-0', 'pointer-events-none');
