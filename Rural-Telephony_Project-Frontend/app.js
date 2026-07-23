@@ -1,6 +1,6 @@
 // Initialize Supabase Client
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
+const SUPABASE_URL = "https://icgryayptwjgcpqhwsxx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_U8VMbs1XABYo62cOslpNkw_PfN6rPRl";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Multi-Tenant Infrastructure Security Contact & GPS Directory
