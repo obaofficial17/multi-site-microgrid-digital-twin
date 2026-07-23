@@ -11,6 +11,5 @@ Thumbs.db
 # Private credentials (Never push keys!)
 .env
 
-
 .vercel
 .env*
