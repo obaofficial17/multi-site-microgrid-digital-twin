@@ -20,8 +20,8 @@ HEADERS = {
 }
 
 SITES = [
-    "Site 1 - Epe", "Site 2 - Oyere", "Site 3 - Aiyetiabo",
-    "Site 4 - Emuren", "Site 5 - Igirigi", "Site 6 - Gbedu", "Site 7 - Obbo Aiyegunle"
+    "Site 1 - Epe", "Site 2 - Oba-Do", "Site 3 - Likogbe",
+    "Site 4 - Adu camp Emuren", "Site 5 - Igirigi Ado-Ekiti", "Site 6 - Gbedu", "Site 7 - Obbo Aiyegunle"
 ]
 
 print("🚀 A1 Power High-Resolution DTU Telemetry Simulator Initialized...")

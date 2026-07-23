@@ -5,13 +5,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Multi-Tenant Infrastructure Security Contact
 const SITE_DIRECTORY = {
-    "Site 1 - Epe": { security: "Lekan / Epe SG", phone: "+234 803 111 0001", lat: 6.58, lon: 3.98 },
-    "Site 2 - Oyere": { security: "Tosin / Oyere SG", phone: "+234 803 111 0002", lat: 7.52, lon: 4.50 },
-    "Site 3 - Aiyetiabo": { security: "Aiyetiabo Team", phone: "+234 803 111 0003", lat: 7.50, lon: 4.55 },
-    "Site 4 - Emuren": { security: "Emuren Resident SG", phone: "+234 803 111 0004", lat: 6.73, lon: 3.65 },
-    "Site 5 - Igirigi": { security: "Igirigi Patrol", phone: "+234 803 111 0005", lat: 7.60, lon: 4.50 },
-    "Site 6 - Gbedu": { security: "Gbedu Security", phone: "+234 803 111 0006", lat: 7.30, lon: 3.90 },
-    "Site 7 - Obbo Aiyegunle": { security: "Obbo HQ Guard", phone: "+234 803 111 0007", lat: 8.12, lon: 5.10 }
+    "Site 1 - Epe": { security: "Mr Tosin", phone: "07085674409", lat: 6.67, lon: 3.98 },
+    "Site 2 - Oba-Do": { security: "", phone: "", lat: 7.09, lon: 4.72 },
+    "Site 3 - Likogbe": { security: "Mr Saheed", phone: "08118216557", lat: 6.45, lon: 4.38 },
+    "Site 4 - Adu camp Emuren": { security: "Mr Awokunle", phone: "08141817218", lat: 7.41, lon: 5.45 },
+    "Site 5 - Igirigi Ado-Ekiti": { security: "Mr Yusuf", phone: "08076364851", lat: 7.55, lon: 5.26 },
+    "Site 6 - Gbedu": { security: "Mr Ogungbenle", phone: "09166804446", lat: 8.37, lon: 4.25 },
+    "Site 7 - Obbo Aiyegunle": { security: "Mr Joshua", phone: "09024659729", lat: 8.03, lon: 5.27 }
 };
 
 // DOM Pointers
