@@ -49,7 +49,7 @@ const socBar = document.getElementById('soc-bar');
 // Global Configurations
 let chartGen = null, chartVolt = null, chartLoad = null, chartBat = null;
 let activeChannel = null, heartbeatTimer = null, audioCtx = null;
-let isViewingHistory = false; // Flag to pause live updates
+let isViewingHistory = false; 
 
 // ==============================================================================
 // 0. OPEN-METEO WEATHER & UTILITIES
@@ -94,7 +94,7 @@ function triggerAudibleSCADAAlert() {
 }
 
 // ==============================================================================
-// 1. SCADA CHART ENGINE
+// 1. SCADA CHART ENGINE 
 // ==============================================================================
 const customCanvasBackgroundColor = {
     id: 'customCanvasBackgroundColor',
@@ -114,14 +114,7 @@ function initSCADACharts() {
     const commonScales = {
         x: { 
             grid: { display: false }, 
-            ticks: { 
-                color: '#64748b', 
-                font: { size: 9 }, 
-                maxRotation: 45, 
-                minRotation: 45,
-                autoSkip: true,
-                maxTicksLimit: 8 // Prevents bundling of X-axis labels
-            } 
+            ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 8 } 
         },
         y: { 
             grid: { display: true, color: '#f1f5f9' }, 
@@ -130,23 +123,14 @@ function initSCADACharts() {
     };
     
     const commonOptions = { 
-        responsive: true, 
-        maintainAspectRatio: false, 
-        scales: commonScales, 
+        responsive: true, maintainAspectRatio: false, scales: commonScales, 
         plugins: { 
-            legend: { 
-                display: true, 
-                position: 'top',
-                labels: { color: '#334155', font: { size: 11, weight: 'bold' }, usePointStyle: true, boxWidth: 8 }
-            }, 
+            legend: { display: true, position: 'top', labels: { color: '#334155', font: { size: 11, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } }, 
             customCanvasBackgroundColor: { color: 'white' } 
         },
-        elements: {
-            point: { radius: 0, hitRadius: 10, hoverRadius: 4 } // Cleans up lines
-        }
+        elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 4 } } 
     };
 
-    // Notice the tension: 0.4 for smooth curves
     chartGen = new Chart(document.getElementById('solarPowerChart'), {
         type: 'line', data: { labels: [], datasets: [
             { label: 'CC1 Output (W)', data: [], borderColor: '#10b981', borderWidth: 2, tension: 0.4, fill: false },
@@ -195,20 +179,18 @@ function appendMetricsToCharts(timeStr, r, limit) {
     });
 }
 
-// Wipe cards immediately when switching sites to avoid confusing leftover data
 function resetDashboardView() {
     totalSolarVal.innerText = "0.0";
     totalLoadVal.innerText = "0.0";
     batVal.innerText = "0.00";
     socBadge.innerText = "0% SoC";
     socBar.style.width = "0%";
+    liveAlarmBanner.classList.add('hidden');
+    document.body.classList.remove('ring-4', 'ring-rose-500', 'ring-inset');
+    alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">System log clear. Fetching hardware baseline telemetry stream...</div>';
     
     [chartGen, chartVolt, chartLoad, chartBat].forEach(c => {
-        if(c) { 
-            c.data.labels = []; 
-            c.data.datasets.forEach(d => d.data = []); 
-            c.update('none'); 
-        }
+        if(c) { c.data.labels = []; c.data.datasets.forEach(d => d.data = []); c.update('none'); }
     });
 }
 
@@ -230,10 +212,12 @@ function kickHeartbeatCountdownTimer() {
     }, 40000);
 }
 
-function evaluateThresholdAlarms(r) {
+// Returns a list of faults. isLiveBannerUpdate boolean determines if the screen turns red.
+function evaluateThresholdAlarms(r, isLiveBannerUpdate = false) {
     let internalFaultLogs = [];
     const batVolt = parseFloat(r.battery_voltage);
 
+    // Limit Alarms (Capped accurately to 55V Architecture)
     if (batVolt > 55.0) internalFaultLogs.push({ type: 'CRITICAL OVERVOLTAGE', msg: `Battery Overvoltage (${batVolt}V) - Exceeds 55V maximum limit.` });
     else if (batVolt >= 53.0) internalFaultLogs.push({ type: 'APPROACHING HIGH LIMIT', msg: `Battery approaching upper limit (${batVolt}V).` });
     else if (batVolt <= 44.0) internalFaultLogs.push({ type: 'CRITICAL UNDERVOLTAGE', msg: `Battery Deep Discharge (${batVolt}V) - Immediate LVD Hazard.` });
@@ -241,35 +225,29 @@ function evaluateThresholdAlarms(r) {
 
     if (r.cc1_pv_volts > 110.0 || r.cc2_pv_volts > 110.0) internalFaultLogs.push({ type: 'PV OVERVOLTAGE', msg: `Solar String Voltage Spike Detected.` });
 
-    const watHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', hour12: false }).format(new Date()));
+    // EXTRACT THE SPECIFIC TIME OF THE DATA POINT, NOT THE BROWSER'S TIME
+    const rowTime = r.created_at ? new Date(r.created_at) : new Date();
+    const watHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', hour12: false }).format(rowTime));
+    
     if (watHour >= 8 && watHour <= 17) {
-        if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0)) internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `Sub-optimal daylight harvesting detected.` });
+        if ((r.cc1_pv_watts + r.cc2_pv_watts < 50.0)) {
+            internalFaultLogs.push({ type: 'UNDER-GENERATION', msg: `Sub-optimal daylight harvesting detected (${(r.cc1_pv_watts + r.cc2_pv_watts).toFixed(1)}W).` });
+        }
     } 
 
-    if (internalFaultLogs.length > 0) {
-        liveAlarmDesc.innerText = `${internalFaultLogs[0].type}: ${internalFaultLogs[0].msg}`;
-        liveAlarmBanner.classList.remove('hidden');
-        document.body.classList.add('ring-4', 'ring-rose-500', 'ring-inset');
-        triggerAudibleSCADAAlert();
-
-        internalFaultLogs.forEach(alert => {
-            const timeLog = formatWATTimestamp(r.created_at || new Date().toISOString());
-            if (alarmHistoryContainer.innerText.includes("Awaiting hardware baseline")) alarmHistoryContainer.innerHTML = "";
-            
-            alarmHistoryContainer.innerHTML = `
-                <div class="bg-white border-l-2 border-l-rose-500 border border-slate-200 rounded p-3 text-slate-700 shadow-sm space-y-1.5 animate-pulse">
-                    <div class="flex justify-between font-bold items-center border-b border-slate-100 pb-1">
-                        <span class="text-xs text-slate-800">${timeLog} ⚠️ ${r.site_id}</span>
-                        <span class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-mono uppercase">${alert.type}</span>
-                    </div>
-                    <p class="text-slate-600 text-[11px] font-sans font-medium">${alert.msg}</p>
-                </div>
-            ` + alarmHistoryContainer.innerHTML;
-        });
-    } else {
-        liveAlarmBanner.classList.add('hidden');
-        document.body.classList.remove('ring-4', 'ring-rose-500', 'ring-inset');
+    if (isLiveBannerUpdate) {
+        if (internalFaultLogs.length > 0) {
+            liveAlarmDesc.innerText = `${internalFaultLogs[0].type}: ${internalFaultLogs[0].msg}`;
+            liveAlarmBanner.classList.remove('hidden');
+            document.body.classList.add('ring-4', 'ring-rose-500', 'ring-inset');
+            triggerAudibleSCADAAlert();
+        } else {
+            liveAlarmBanner.classList.add('hidden');
+            document.body.classList.remove('ring-4', 'ring-rose-500', 'ring-inset');
+        }
     }
+
+    return internalFaultLogs;
 }
 
 // ==============================================================================
@@ -295,7 +273,7 @@ async function syncNodeHistory() {
     const startVal = startTimeInput.value;
     const endVal = endTimeInput.value;
     
-    resetDashboardView(); // Blanks out the old site immediately
+    resetDashboardView(); 
     fetchLocalWeather(siteName);
     
     const meta = SITE_DIRECTORY[siteName];
@@ -329,11 +307,50 @@ async function syncNodeHistory() {
     if (data && data.length > 0) {
         const processedData = (!startVal && !endVal) ? data.reverse() : data;
         
+        let accumulatedLogHtml = "";
+        let anyAlarmsFound = false;
+
+        // Process charting
         processedData.forEach(row => {
             const stamp = formatWATTimestamp(row.created_at);
             appendMetricsToCharts(stamp, row, processedData.length);
         });
+
+        // Process alarms for the last 100 points so the browser doesn't freeze on massive date ranges
+        const alarmData = processedData.slice(-100);
+        
+        alarmData.forEach((row, index) => {
+            const isLastPoint = (index === alarmData.length - 1); // Treat the very last point as "Live" to update the banner
+            const logs = evaluateThresholdAlarms(row, isLastPoint); 
+            
+            if (logs.length > 0) {
+                anyAlarmsFound = true;
+                const stamp = formatWATTimestamp(row.created_at);
+                let rowHtml = "";
+                logs.forEach(alert => {
+                    rowHtml += `
+                        <div class="bg-white border-l-2 border-l-rose-500 border border-slate-200 rounded p-3 text-slate-700 shadow-sm space-y-1.5">
+                            <div class="flex justify-between font-bold items-center border-b border-slate-100 pb-1">
+                                <span class="text-xs text-slate-800">${stamp} ⚠️ ${row.site_id}</span>
+                                <span class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-mono uppercase">${alert.type}</span>
+                            </div>
+                            <p class="text-slate-600 text-[11px] font-sans font-medium">${alert.msg}</p>
+                        </div>
+                    `;
+                });
+                accumulatedLogHtml = rowHtml + accumulatedLogHtml; // Newest on top
+            }
+        });
+
+        if (anyAlarmsFound) {
+            alarmHistoryContainer.innerHTML = accumulatedLogHtml;
+        } else {
+            alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">System log clear. No faults detected in this dataset.</div>';
+        }
+
         renderScreenCards(processedData[processedData.length - 1]);
+    } else {
+        alarmHistoryContainer.innerHTML = '<div class="text-slate-400 italic py-2">No telemetry data found for this site/window.</div>';
     }
 }
 
@@ -346,14 +363,33 @@ function subscribeLiveFeed() {
         .channel('public:location_telemetry')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_telemetry' }, 
         (payload) => {
-            // Only update the UI if the new row belongs to the dropdown AND we aren't exploring the past
             if (payload.new.site_id === siteSelector.value && !isViewingHistory) {
                 kickHeartbeatCountdownTimer();
                 const row = payload.new;
                 const stamp = formatWATTimestamp(row.created_at);
                 renderScreenCards(row);
                 appendMetricsToCharts(stamp, row, 50); 
-                evaluateThresholdAlarms(row);
+                
+                // Inject newly arrived live alarms directly into the HTML
+                const logs = evaluateThresholdAlarms(row, true); 
+                if (logs.length > 0) {
+                    if (alarmHistoryContainer.innerText.includes("clear") || alarmHistoryContainer.innerText.includes("baseline")) {
+                        alarmHistoryContainer.innerHTML = "";
+                    }
+                    let newLogsHtml = "";
+                    logs.forEach(alert => {
+                        newLogsHtml += `
+                            <div class="bg-white border-l-2 border-l-rose-500 border border-slate-200 rounded p-3 text-slate-700 shadow-sm space-y-1.5 animate-pulse">
+                                <div class="flex justify-between font-bold items-center border-b border-slate-100 pb-1">
+                                    <span class="text-xs text-slate-800">${stamp} ⚠️ ${row.site_id}</span>
+                                    <span class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-mono uppercase">${alert.type}</span>
+                                </div>
+                                <p class="text-slate-600 text-[11px] font-sans font-medium">${alert.msg}</p>
+                            </div>
+                        `;
+                    });
+                    alarmHistoryContainer.innerHTML = newLogsHtml + alarmHistoryContainer.innerHTML;
+                }
             }
         })
         .subscribe();
@@ -365,7 +401,7 @@ function subscribeLiveFeed() {
 // 4. EVENT LISTENERS
 // ==============================================================================
 siteSelector.addEventListener('change', () => {
-    syncNodeHistory(); // Live Feed handles the switch dynamically without crashing
+    syncNodeHistory(); 
 });
 
 fetchRangeBtn.addEventListener('click', () => {
@@ -373,7 +409,7 @@ fetchRangeBtn.addEventListener('click', () => {
     const endVal = endTimeInput.value;
     
     if (startVal || endVal) {
-        isViewingHistory = true; // Pauses live updates silently
+        isViewingHistory = true; 
         heartbeatText.innerText = "Viewing History (Live Paused)";
         heartbeatDot.className = "w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse";
         heartbeatBadge.className = "bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-200 shadow-sm";
@@ -430,7 +466,6 @@ loginForm.addEventListener('submit', async (e) => {
 
 logoutBtn.addEventListener('click', async () => {
     await supabaseClient.auth.signOut();
-    // Destroy memory entirely so auto-login stops
     localStorage.clear();
     sessionStorage.clear();
     window.location.reload();
