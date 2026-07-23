@@ -49,7 +49,6 @@
             </div>
             
             <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full md:w-auto">
-                
                 <div class="flex flex-wrap items-center gap-2 bg-slate-50 px-2 py-1.5 border border-slate-200 rounded-lg shadow-inner w-full sm:w-auto">
                     <div class="flex items-center gap-1">
                         <label class="text-[9px] font-bold text-slate-500 uppercase">From:</label>
@@ -80,7 +79,6 @@
         <main class="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
             
             <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
-                
                 <div class="flex flex-col sm:flex-row lg:flex-col gap-4 w-full lg:w-1/4">
                     <div class="bg-white border-t-4 border-t-slate-400 rounded-lg p-3 sm:p-4 shadow-sm flex-1">
                         <h3 class="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2">Site Details</h3>
@@ -112,7 +110,6 @@
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 w-full lg:w-3/4">
-                    
                     <div class="bg-white border-t-4 border-t-emerald-500 rounded-lg p-3 sm:p-4 shadow-sm">
                         <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">Solar Gen</p>
                         <div class="mt-2 flex items-baseline gap-1">
@@ -131,7 +128,7 @@
 
                     <div class="bg-white border-t-4 border-t-teal-600 rounded-lg p-3 sm:p-4 shadow-sm col-span-2 md:col-span-1">
                         <div class="flex justify-between items-start">
-                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">48V Bus</p>
+                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">55V Bus System</p>
                             <span id="soc-badge" class="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-200 font-bold">0% SoC</span>
                         </div>
                         <div class="mt-2 flex items-baseline gap-1">
@@ -149,49 +146,49 @@
                 
                 <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm h-[300px] flex flex-col">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Solar Power Harvesting Profile</h3>
+                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Solar Power Harvesting</h3>
                         <button onclick="downloadChart('solarPowerChart', 'Solar_Profile')" class="text-slate-400 hover:text-emerald-600 transition-colors" title="Download as Image">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         </button>
                     </div>
-                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
-                        <div id="wrapper-gen" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="solarPowerChart"></canvas></div>
+                    <div class="relative w-full flex-grow rounded">
+                        <canvas id="solarPowerChart"></canvas>
                     </div>
                 </div>
 
                 <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm h-[300px] flex flex-col">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">PV String Input Voltages</h3>
+                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">PV String Voltages</h3>
                         <button onclick="downloadChart('solarVoltChart', 'PV_Voltages')" class="text-slate-400 hover:text-emerald-600 transition-colors" title="Download as Image">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         </button>
                     </div>
-                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
-                        <div id="wrapper-volt" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="solarVoltChart"></canvas></div>
+                    <div class="relative w-full flex-grow rounded">
+                        <canvas id="solarVoltChart"></canvas>
                     </div>
                 </div>
 
                 <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm h-[300px] flex flex-col">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Load Power Consumption Trends</h3>
+                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Load Trends</h3>
                         <button onclick="downloadChart('loadPowerChart', 'Load_Trends')" class="text-slate-400 hover:text-emerald-600 transition-colors" title="Download as Image">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         </button>
                     </div>
-                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
-                        <div id="wrapper-load" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="loadPowerChart"></canvas></div>
+                    <div class="relative w-full flex-grow rounded">
+                        <canvas id="loadPowerChart"></canvas>
                     </div>
                 </div>
 
                 <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm h-[300px] flex flex-col">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">48V DC Bus Line Stability</h3>
+                        <h3 class="text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Bus Stability</h3>
                         <button onclick="downloadChart('batteryStabilityChart', 'Bus_Stability')" class="text-slate-400 hover:text-emerald-600 transition-colors" title="Download as Image">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         </button>
                     </div>
-                    <div class="relative w-full flex-grow overflow-x-auto overflow-y-hidden rounded custom-scrollbar">
-                        <div id="wrapper-bat" class="h-full transition-all duration-300" style="min-width: 100%;"><canvas id="batteryStabilityChart"></canvas></div>
+                    <div class="relative w-full flex-grow rounded">
+                        <canvas id="batteryStabilityChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -209,17 +206,8 @@
         </main>
     </div>
 
-    <style>
-        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Ensures Chart.js renders a white background on export instead of transparent */
-        canvas { background-color: #ffffff; } 
-    </style>
+    <style> canvas { background-color: #ffffff; } </style>
 
-    
     <script src="app.js"></script>
 </body>
 </html>
