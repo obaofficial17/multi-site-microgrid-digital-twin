@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  edge-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: a1_edge_proxy_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - SUPABASE_URL=https://icgryayptwjgcpqhwsxx.supabase.co
+      - SUPABASE_ANON_KEY=sb_publishable_U8VMbs1XABYo62cOslpNkw_PfN6rPRl
